@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import { Schema, model, MongooseDocument } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
 const DeliveryGuy: Schema = new Schema({
@@ -17,6 +17,11 @@ const DeliveryGuy: Schema = new Schema({
 		type: Schema.Types.ObjectId,
 		ref: "Order",
 	}]
-}).plugin(uniqueValidator);
+}).plugin(uniqueValidator).set("toJSON", {
+	transform: (doc: MongooseDocument, returnedDocument: MongooseDocument): void => {
+		returnedDocument.id = doc._id.toString();
+		delete returnedDocument._id;
+	}
+});
 
 export default model("delivery__personel", DeliveryGuy);
