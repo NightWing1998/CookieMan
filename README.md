@@ -6,6 +6,7 @@ We sell cookies online to people who can buy them.
 
 * Summary: It is the backend for a cookie delivery application
 * Version: 1.0.0
+* URL: https://cookieman98.herokuapp.com/
 
 ### How do I get set up? ###
 
