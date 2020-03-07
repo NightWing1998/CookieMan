@@ -1,22 +1,43 @@
 import { gql } from "apollo-server-express";
 
 export default gql`
-	type DeliveryGuy {
+	type DeliveryPersonel {
 		name: String!,
 		number: String!,
 		id: ID!,
 		history: [ID]!
 	}
+	type Order {
+		id: ID!,
+		name: String!,
+		number: String!,
+		address: String!,
+		quantity: Int!,
+		price: Int!,
+		distance: Int!,
+		barcodePath: String!,
+		status: String!,
+		deliveryPersonel: DeliveryPersonel
+	}
 	type Query {
 		hello : String!,
-		getDeliveryGuys(
+		getDeliveryPersonels(
 			id: ID
-		): [DeliveryGuy!]!
+		): [DeliveryPersonel!]!,
+		getOrders(id: ID): [Order]!,
 	}
 	type Mutation {
-		addDeliveryGuy(
+		addDeliveryPersonel(
 			name: String!,
-			number: String!
-		): DeliveryGuy,
+			number: String!,
+		): DeliveryPersonel,
+		placeOrder(
+			name: String!,
+			number: String!,
+			address: String!,
+			quantity: Int!,
+			lat: Float!,
+			long: Float!
+		): Order!
 	}
 `;

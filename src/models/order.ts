@@ -14,9 +14,9 @@ const Order: Schema = new Schema({
 		maxlength: 10,
 		minlength: 10,
 	},
-	deliveryGuy: {
+	deliveryPersonel: {
 		type: Schema.Types.ObjectId,
-		ref: "delivery__personel"
+		ref: "DeliveryPersonel"
 	},
 	barcodePath: {
 		type: String,
@@ -29,11 +29,20 @@ const Order: Schema = new Schema({
 	price: {
 		type: Number,
 		required: true
+	},
+	distance: {
+		type: Number,
+		required: true
+	},
+	status: {
+		type: String,
+		required: true,
+		default: "ordered"
 	}
 }).set("toJSON", {
 	transform: (doc: any, returnedDocument: MongooseDocument): void => {
 		returnedDocument.id = returnedDocument._id.toString();
-		delete doc.barcode;
+		delete returnedDocument._id;
 	}
 });
 
