@@ -8,9 +8,11 @@ import qrcode from "qrcode";
 import md5 from "md5";
 
 import { resolve } from "path";
-import { ApolloError } from "apollo-server-express";
+import { ApolloError, PubSub, withFilter } from "apollo-server-express";
 
 import PriorityQueue from "ts-priority-queue";
+
+const pubsub = new PubSub();
 
 interface DeliveryPersonel {
 	name: string,
@@ -21,9 +23,9 @@ interface DeliveryPersonel {
 }
 
 interface Order {
-	name: string,
-	number: string,
-	address: string,
+	customerName: string,
+	customerNumber: string,
+	customerAddress: string,
 	id: string,
 	quantity: number,
 	price: number,
@@ -80,7 +82,7 @@ export default {
 					throw new ApolloError(`${id} order does not exist.`, "INVALID_ORDER_ID");
 				} else {
 					const o = og.toJSON();
-					console.log(o);
+					// console.log(o);
 					return [{
 						...o,
 						relativeArrivalTime: o.arrivalTime.getTime() - startTime[0]
@@ -96,7 +98,7 @@ export default {
 				const dP = await deliveryPersonel.findById(deliveryPersonelId.toString());
 				if (dP === null) {
 					throw new ApolloError(`delivery personel with id - ${deliveryPersonelId} does not exist. Please check the deliveryPersonelId`, "INVALID_DELIVERY_PERSONEL_ID");
-				} else if (dP.toJSON().currentOrder !== undefined) {
+				} else if (dP.toJSON().currentOrder !== undefined && dP.toJSON().currentOrder !== null) {
 					throw new ApolloError(`delivery personel with id - ${deliveryPersonelId} is already assigned order - ${dP.toJSON().currentOrder}. Please complete that first`, "DELIVERY_PERSONAL_BUSY");
 				}
 				const orderFromQueue = OrdersQueue.dequeue();
@@ -121,6 +123,9 @@ export default {
 					...updatedOrder,
 					deliveryPersonel: dP._id,
 					status: "assigned",
+				});
+				pubsub.publish("ORDER_UPDATE", {
+					orderTracking: updatedOrder
 				});
 				return updatedOrder;
 			}
@@ -155,7 +160,7 @@ export default {
 				...newOrder,
 				relativeArrivalTime: newOrder.arrivalTime.getTime() - startTime[0]
 			}
-			console.log(o);
+			// console.log(o);
 			OrdersQueue.queue(o);
 			return o;
 		},
@@ -167,20 +172,44 @@ export default {
 			} else if (dP.toJSON().currentOrder === undefined || dP.toJSON().currentOrder === null) {
 				throw new ApolloError(`delivery personel with id - ${deliveryPersonelId.toString()} is currently idle. Please accept an order first`, "DELIVERY_PERSONEL_IDLE");
 			}
-			const { customerName, customerAddress, customerNumber, distance, quantity } = dP.toJSON().currentOrder;
+			const { customerName, customerAddress, customerNumber, distance, quantity, price, barcodePath, arrivalTime } = dP.toJSON().currentOrder;
 			const OrderId = dP.toJSON().currentOrder.id;
 			if (md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}`) === text.toString()) {
 				await dP.updateOne({
 					...dP.toJSON(),
 					currentOrder: null
 				});
-				await order.findByIdAndUpdate(OrderId, {
+				(await order.findByIdAndUpdate(OrderId, {
 					status: "delivered"
+				}, { new: true }));
+				const updatedOrder: Order = {
+					customerName, customerAddress, customerNumber, distance, quantity, price,
+					barcodePath, status: "delivered",
+					relativeArrivalTime: arrivalTime - startTime[0],
+					id: OrderId,
+					deliveryPersonel: {
+						...dP.toJSON()
+					}
+				}
+				pubsub.publish("ORDER_UPDATE", {
+					orderTracking: updatedOrder
 				});
 				return true;
 			} else {
 				return false;
 			}
+		}
+	},
+	Subscription: {
+		orderTracking: {
+			subscribe: withFilter(
+				() => pubsub.asyncIterator(["ORDER_UPDATE"]),
+				(payload: any, variables: GraphQLFieldConfigArgumentMap): boolean => {
+					// console.log(payload, variables);
+					const { orderId } = variables;
+					return payload.orderTracking.id === orderId.toString()
+				}
+			)
 		}
 	}
 };

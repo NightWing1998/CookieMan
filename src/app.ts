@@ -14,7 +14,7 @@ import { resolve } from "path";
 
 // console.log('config :', config);
 
-const server = new ApolloServer({
+export const server = new ApolloServer({
 	typeDefs,
 	resolvers,
 	validationRules: [depthLimit(7)],
@@ -23,7 +23,7 @@ const server = new ApolloServer({
 	// formatError: MongooseErrorHandler
 });
 
-const app = express();
+export const app = express();
 
 app.use(compression());
 app.use(express.urlencoded({ extended: true }));

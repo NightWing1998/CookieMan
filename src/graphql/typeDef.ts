@@ -45,5 +45,10 @@ export default gql`
 			deliveryPersonelId: ID!,
 			text: String!
 		): Boolean!
+	},
+	type Subscription {
+		orderTracking(
+			orderId: ID!
+		): Order!
 	}
 `;

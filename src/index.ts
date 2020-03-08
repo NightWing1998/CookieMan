@@ -1,5 +1,5 @@
 import http from "http";
-import app from "./app";
+import app, { server } from "./app";
 import config from "./utils/config";
 
 import fs from "fs";
@@ -7,8 +7,12 @@ import { resolve } from "path";
 
 import { connect } from "mongoose";
 
-http.createServer(app).listen(config.PORT, (): void => {
-	console.log(`Server started at ${config.PORT}. \nGraphQL path: /api${config.GRAPHQL_ROUTE}`);
+const httpServer = http.createServer(app);
+
+server.installSubscriptionHandlers(httpServer);
+
+httpServer.listen(config.PORT, (): void => {
+	console.log(`Server started at ${config.PORT}. \nGraphQL path: /api${config.GRAPHQL_ROUTE}. \nSubscription Path: ${server.subscriptionsPath}`);
 	const barcodesPath = resolve(__dirname, "..", "barcodes");
 	if (!fs.existsSync(barcodesPath)) {
 		fs.mkdirSync(barcodesPath);
@@ -21,7 +25,7 @@ http.createServer(app).listen(config.PORT, (): void => {
 		useCreateIndex: true,
 		autoIndex: true,
 		useNewUrlParser: true,
-		useFindAndModify: true
+		useFindAndModify: false
 	}).then((): void => {
 		console.log(`Connected to mongodb ${config.MONGODB_URI}`);
 	}).catch((err: Error): void => {
