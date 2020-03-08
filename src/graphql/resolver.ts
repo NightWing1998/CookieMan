@@ -158,7 +158,7 @@ export default {
 			// console.log(name, number, lat.toString(), long.toString(), address, quantity, distance, pricePerUnit * parseInt(quantity.toString()));
 			let filename = `${customerName}_${Date.now()}.png`;
 			const barcodePath = resolve(__dirname, "..", "..", "barcodes", filename);
-			await qrcode.toFile(barcodePath, md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}`));
+			await qrcode.toFile(barcodePath, md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}_${Date.now()}`));
 			const newO = (await order.create({
 				customerName, customerNumber, customerAddress, distance, quantity,
 				price: pricePerUnit * parseInt(quantity.toString()),
