@@ -155,14 +155,17 @@ export default {
 			const pricePerUnit = 20;
 			const { customerName, customerNumber, lat, long, customerAddress, quantity } = args;
 			const distance = Math.sqrt(Math.pow((currLocation[0] - parseFloat(lat.toString())), 2) + Math.pow(currLocation[1] - parseFloat(long.toString()), 2));
+			
 			// console.log(name, number, lat.toString(), long.toString(), address, quantity, distance, pricePerUnit * parseInt(quantity.toString()));
-			let filename = `${customerName}_${Date.now()}.png`;
+			const current = Date.now();
+			let filename = `${customerName}_${current}.png`;
 			const barcodePath = resolve(__dirname, "..", "..", "barcodes", filename);
-			await qrcode.toFile(barcodePath, md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}_${Date.now()}`));
+			await qrcode.toFile(barcodePath, md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}_${current}`));
 			const newO = (await order.create({
 				customerName, customerNumber, customerAddress, distance, quantity,
 				price: pricePerUnit * parseInt(quantity.toString()),
-				barcodePath: `/barcodes/${filename}`
+				barcodePath: `/barcodes/${filename}`,
+				arrivalTime: new Date(current)
 			}));
 			const newOrder = (await newO.populate("deliveryPersonel").execPopulate()).toJSON();
 			let o: Order = {
@@ -183,7 +186,7 @@ export default {
 			}
 			const { customerName, customerAddress, customerNumber, distance, quantity, price, barcodePath, arrivalTime } = dP.toJSON().currentOrder;
 			const OrderId = dP.toJSON().currentOrder.id;
-			if (md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}`) === text.toString()) {
+			if (md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}_${arrivalTime.getTime()}`) === text.toString()) {
 				await dP.updateOne({
 					...dP.toJSON(),
 					currentOrder: null
