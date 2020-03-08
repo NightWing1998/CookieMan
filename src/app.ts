@@ -45,4 +45,6 @@ app.get("/api", (req: Request, res: Response, next: NextFunction) => {
 	res.status(200).json({ "hello": "world" });
 });
 
+app.use("/",express.static(resolve(__dirname,"..","frontend")));
+
 export default app;

@@ -2,7 +2,7 @@ FROM node:13.6.0-alpine3.11 AS builder
 WORKDIR /usr/src/temp
 COPY package*.json ./
 COPY tsconfig*.json ./
-COPY ./src ./src
+COPY . .
 RUN npm install
 RUN npm run build
 
