@@ -81,6 +81,14 @@ We sell cookies online to people who can buy them.
       
 4. Why long polling and not cron job with subscriptions?
   <p>Instead of wasting computational time on guessing when the delivery personel will be available, we make the delivery personel ask for new orders whenever he/she is ready. Drawback is this increases unnecessary new traffic that could be many times useless</p>
+  
+### Demo ###
+
+1. Add delivery Personel <img src="https://github.com/NightWing1998/CookieMan/blob/master/addDeliveryPersonal.gif" />
+2. Place Order <img src="https://github.com/NightWing1998/CookieMan/blob/master/placeOrder.gif" />
+3. Delivery personels long polling for orders <img src="https://github.com/NightWing1998/CookieMan/blob/master/long%20polling.gif" />
+4. Delivery personel scanning QR codes <img src="https://github.com/NightWing1998/CookieMan/blob/master/scan%20QR%20code.gif" />
+5. Completing delivery and client side subscription <img src="https://github.com/NightWing1998/CookieMan/blob/master/delivered%20and%20subscription.gif" />
 
 ### Who do I talk to? ###
 
