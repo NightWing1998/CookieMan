@@ -84,11 +84,11 @@ We sell cookies online to people who can buy them.
   
 ### Demo ###
 
-1. Add delivery Personel ![Alt text](https://lh6.googleusercontent.com/ZjwNFQObuJ4cZZmH2_AmY_Xy7yvBdDxgZdmLJVFO9iSIoxKck9u669wA3txGPToDa7KwkqerSguBoY4eu5db=w940-h826)
-2. Place Order for cookies ![Alt text](https://lh5.googleusercontent.com/JMKoqhVHQ7hE7jGq6D1RoCXh-rFBBkQcSTEhwq3vVqTlO168FgyxUwbo3V0vOd4hYPFCDyhsfrQS8FaDrWir=w940-h826)
-3. Delivery personels long polling for orders ![Alt text](https://lh4.googleusercontent.com/1QoSXXpvTgIGWiWzMbyBUjE_6Y6dc2bnCRvaFNx-Uib9aV3p3abU1zoGWcYgXR9FoU3VPkA6-Nxmhu4XAl2-=w940-h826)
-4. Delivery personel scanning QR codes ![Alt text](https://lh5.googleusercontent.com/j_KTH88QRkobLQLajbs8oyYFgz-7EW_zBtMcWV9NNcDuKcv3c3lmuBTpEVK8ErqO6bXAQcOsKeRjb_NtVMRw=w940-h826)
-5. Completing delivery and client side subscription ![Alt text](https://lh4.googleusercontent.com/Dlj-IuzmW__DBBUcETHKfc5KpS2kzJX0RhIJ8MJDgw4UIDv-t4Oiv5hq6eBbVuRXLby4EKOC4qW6JNW3jdfJ=w940-h826)
+1. Add delivery Personel <img src="https://github.com/NightWing1998/CookieMan/blob/master/addDeliveryPersonal.gif" />
+2. Place Order <img src="https://github.com/NightWing1998/CookieMan/blob/master/placeOrder.gif" />
+3. Delivery personels long polling for orders <img src="https://github.com/NightWing1998/CookieMan/blob/master/long%20polling.gif" />
+4. Delivery personel scanning QR codes <img src="https://github.com/NightWing1998/CookieMan/blob/master/scan%20QR%20code.gif" />
+5. Completing delivery and client side subscription <img src="https://github.com/NightWing1998/CookieMan/blob/master/delivered%20and%20subscription.gif" />
 
 ### Who do I talk to? ###
 
