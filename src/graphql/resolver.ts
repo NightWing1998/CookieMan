@@ -46,9 +46,18 @@ const comparingPriority = (a: Order, b: Order): number => {
 		return a.distance - b.distance;
 	}
 }
+
 const OrdersQueue: PriorityQueue<Order> = new PriorityQueue({
 	comparator: comparingPriority
 });
+
+
+// initialise OrderQueue
+(async () => {
+	const orders: Order[] = (await order.find({ status: "ordered" })).map((o: MongooseDocument): any => ({ ...o.toJSON(), relativeArrivalTime: o.toJSON().arrivalTime.getTime() - startTime[0] }));
+	orders.forEach(o => OrdersQueue.queue(o));
+	// console.log(OrdersQueue.peek());
+})();
 
 export default {
 	Query: {
