@@ -26,6 +26,7 @@ export default gql`
 			id: ID
 		): [DeliveryPersonel!]!,
 		getOrders(id: ID): [Order]!,
+		acceptOrderForDelivery(deliveryPersonelId: ID!): Order
 	}
 	type Mutation {
 		addDeliveryPersonel(
@@ -39,6 +40,10 @@ export default gql`
 			quantity: Int!,
 			lat: Float!,
 			long: Float!
-		): Order!
+		): Order!,
+		completeOrder(
+			id: ID!,
+			text: String!
+		): Boolean!
 	}
 `;
