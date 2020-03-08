@@ -5,6 +5,7 @@ export default gql`
 		name: String!,
 		number: String!,
 		id: ID!,
+		currentOrder: ID,
 		history: [ID]!
 	}
 	type Order {

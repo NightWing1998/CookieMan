@@ -45,6 +45,7 @@
     "md5": "^2.2.1",
     "mongoose": "^5.9.3",
     "mongoose-unique-validator": "^2.0.3",
-    "qrcode": "^1.4.4"
+    "qrcode": "^1.4.4",
+    "ts-priority-queue": "^0.1.1"
   }
 }

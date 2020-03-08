@@ -34,6 +34,10 @@ const Order: Schema = new Schema({
 		type: Number,
 		required: true
 	},
+	arrivalTime: {
+		type: Date,
+		default: Date.now
+	},
 	status: {
 		type: String,
 		required: true,

@@ -10,11 +10,16 @@ import md5 from "md5";
 import { resolve } from "path";
 import { ApolloError } from "apollo-server-express";
 
+import PriorityQueue from "ts-priority-queue";
+
+declare let startTime: number;
+
 interface DeliveryPersonel {
 	name: string,
 	number: string,
 	history: string[],
-	id: string
+	id: string,
+	currentOrder?: string
 }
 
 interface Order {
@@ -22,13 +27,28 @@ interface Order {
 	number: string,
 	address: string,
 	id: string,
-	quantity: Number,
-	price: Number,
-	distance: Number,
+	quantity: number,
+	price: number,
+	distance: number,
 	barcodePath: string,
 	status: string,
+	relativeArrivalTime: number,
 	deliveryPersonel?: DeliveryPersonel
 }
+
+startTime = Date.now();
+
+const comparingPriority = (a: Order, b: Order): number => {
+	let temp = a.relativeArrivalTime - b.relativeArrivalTime;
+	if (Math.abs(temp) > 60000) {
+		return temp;
+	} else {
+		return a.distance - b.distance;
+	}
+}
+const OrdersQueue: PriorityQueue<Order> = new PriorityQueue({
+	comparator: comparingPriority
+});
 
 export default {
 	Query: {
@@ -61,7 +81,8 @@ export default {
 						distance: o.distance,
 						barcodePath: o.barcodePath,
 						status: o.status,
-						deliveryPersonel: o.deliveryPersonel
+						deliveryPersonel: o.deliveryPersonel,
+						relativeArrivalTime: o.arrivalTime - startTime
 					})
 				})
 			} else {
@@ -80,7 +101,8 @@ export default {
 						price: o.price,
 						distance: o.distance,
 						barcodePath: o.barcodePath,
-						deliveryPersonel: o.deliveryPersonel
+						deliveryPersonel: o.deliveryPersonel,
+						relativeArrivalTime: o.arrivalTime - startTime
 					}];
 				}
 			}
@@ -110,7 +132,10 @@ export default {
 			}));
 			const newOrder = (await newO.populate("deliveryPersonel").execPopulate()).toJSON();
 			console.log("#", newOrder, newOrder.deliveryPersonel);
-			return {
+			if (OrdersQueue.length === 0) {
+				startTime = Date.now();
+			}
+			let o: Order = {
 				name: name.toString(),
 				number: number.toString(),
 				address: address.toString(),
@@ -120,8 +145,11 @@ export default {
 				distance,
 				barcodePath,
 				status: newOrder.status,
-				deliveryPersonel: newOrder.deliveryPersonel
-			};
+				deliveryPersonel: newOrder.deliveryPersonel,
+				relativeArrivalTime: newOrder.arrivalTime - startTime
+			}
+			OrdersQueue.queue(o);
+			return o;
 		}
 	}
 };

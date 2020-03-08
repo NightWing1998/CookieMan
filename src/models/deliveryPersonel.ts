@@ -13,6 +13,10 @@ const DeliveryPersonel: Schema = new Schema({
 		required: true,
 		unique: true
 	},
+	currentOrder: {
+		type: Schema.Types.ObjectId,
+		ref: "Order"
+	},
 	history: [{
 		type: Schema.Types.ObjectId,
 		ref: "Order",
