@@ -8,6 +8,8 @@ import config from "./utils/config";
 import typeDefs from "./graphql/typeDef";
 import resolvers from "./graphql/resolver";
 
+import { resolve } from "path";
+
 // import { GraphqlRequestLogger, requestLogger, MongooseErrorHandler } from "./utils/middleware";
 
 // console.log('config :', config);
@@ -34,6 +36,10 @@ server.applyMiddleware({
 		strict: true
 	}
 });
+
+const barcodePath = resolve(__dirname, "..", "barcodes");
+
+app.use("/barcodes", express.static(barcodePath));
 
 app.get("/api", (req: Request, res: Response, next: NextFunction) => {
 	res.status(200).json({ "hello": "world" });

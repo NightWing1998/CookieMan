@@ -12,8 +12,6 @@ import { ApolloError } from "apollo-server-express";
 
 import PriorityQueue from "ts-priority-queue";
 
-declare let startTime: number;
-
 interface DeliveryPersonel {
 	name: string,
 	number: string,
@@ -36,7 +34,7 @@ interface Order {
 	deliveryPersonel?: DeliveryPersonel
 }
 
-startTime = Date.now();
+const startTime = [Date.now()];
 
 const comparingPriority = (a: Order, b: Order): number => {
 	let temp = a.relativeArrivalTime - b.relativeArrivalTime;
@@ -82,7 +80,7 @@ export default {
 						barcodePath: o.barcodePath,
 						status: o.status,
 						deliveryPersonel: o.deliveryPersonel,
-						relativeArrivalTime: o.arrivalTime - startTime
+						relativeArrivalTime: o.arrivalTime - startTime[0]
 					})
 				})
 			} else {
@@ -102,7 +100,7 @@ export default {
 						distance: o.distance,
 						barcodePath: o.barcodePath,
 						deliveryPersonel: o.deliveryPersonel,
-						relativeArrivalTime: o.arrivalTime - startTime
+						relativeArrivalTime: o.arrivalTime - startTime[0]
 					}];
 				}
 			}
@@ -116,25 +114,25 @@ export default {
 			return newPersonel;
 		},
 		placeOrder: async (_: void, args: GraphQLFieldConfigArgumentMap): Promise<Order> => {
+			if (OrdersQueue.length === 0) {
+				startTime[0] = Date.now();
+			}
 			const currLocation = [19, 19];
 			const pricePerUnit = 20;
 			const { name, number, lat, long, address, quantity } = args;
 			const distance = Math.sqrt(Math.pow((currLocation[0] - parseFloat(lat.toString())), 2) + Math.pow(currLocation[1] - parseFloat(long.toString()), 2));
-			console.log(name, number, lat.toString(), long.toString(), address, quantity, distance, pricePerUnit * parseInt(quantity.toString()));
-			const barcodePath = resolve(__dirname, "..", "..", "barcodes", Date.now().toString() + ".svg");
+			// console.log(name, number, lat.toString(), long.toString(), address, quantity, distance, pricePerUnit * parseInt(quantity.toString()));
+			let filename = `${name}_${Date.now()}.svg`;
+			const barcodePath = resolve(__dirname, "..", "..", "barcodes", filename);
 			await qrcode.toFile(barcodePath, md5(`${name}_${number}_${address}_${distance}_${quantity}`));
 			const newO = (await order.create({
 				customerName: name,
 				customerNumber: number,
 				customerAddress: address,
 				price: pricePerUnit * parseInt(quantity.toString()),
-				distance, quantity, barcodePath
+				distance, quantity, barcodePath: `/barcodes/${filename}`
 			}));
 			const newOrder = (await newO.populate("deliveryPersonel").execPopulate()).toJSON();
-			console.log("#", newOrder, newOrder.deliveryPersonel);
-			if (OrdersQueue.length === 0) {
-				startTime = Date.now();
-			}
 			let o: Order = {
 				name: name.toString(),
 				number: number.toString(),
@@ -143,11 +141,12 @@ export default {
 				quantity: parseInt(quantity.toString()),
 				price: newOrder.price,
 				distance,
-				barcodePath,
+				barcodePath: `/barcodes/${filename}`,
 				status: newOrder.status,
 				deliveryPersonel: newOrder.deliveryPersonel,
-				relativeArrivalTime: newOrder.arrivalTime - startTime
+				relativeArrivalTime: newOrder.arrivalTime.getTime() - startTime[0]
 			}
+			console.log(o);
 			OrdersQueue.queue(o);
 			return o;
 		}
