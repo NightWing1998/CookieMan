@@ -70,17 +70,8 @@ export default {
 				return os.map(async (og: MongooseDocument): Promise<Order> => {
 					const o = (await og.populate("deliveryPersonel").execPopulate()).toJSON();
 					return ({
-						name: o.customerName,
-						number: o.customerNumber,
-						address: o.customerAddress,
-						id: o.id,
-						quantity: o.quantity,
-						price: o.price,
-						distance: o.distance,
-						barcodePath: o.barcodePath,
-						status: o.status,
-						deliveryPersonel: o.deliveryPersonel,
-						relativeArrivalTime: o.arrivalTime - startTime[0]
+						...o,
+						relativeArrivalTime: o.arrivalTime.getTime() - startTime[0]
 					})
 				})
 			} else {
@@ -91,17 +82,8 @@ export default {
 					const o = og.toJSON();
 					console.log(o);
 					return [{
-						name: o.customerName,
-						number: o.customerNumber,
-						address: o.customerAddress,
-						id: o.id,
-						quantity: o.quantity,
-						price: o.price,
-						distance: o.distance,
-						barcodePath: o.barcodePath,
-						deliveryPersonel: o.deliveryPersonel,
-						status: o.status,
-						relativeArrivalTime: o.arrivalTime - startTime[0]
+						...o,
+						relativeArrivalTime: o.arrivalTime.getTime() - startTime[0]
 					}];
 				}
 			}
@@ -124,14 +106,7 @@ export default {
 				}
 				const oJ = oldOrder.toJSON();
 				const updatedOrder: Order = {
-					name: oJ.customerName,
-					number: oJ.customerNumber,
-					address: oJ.customerAddress,
-					id: oJ.id,
-					quantity: oJ.quantity,
-					price: oJ.price,
-					distance: oJ.distance,
-					barcodePath: oJ.barcodePath,
+					...oJ,
 					relativeArrivalTime: oJ.arrivalTime.getTime() - startTime[0],
 					deliveryPersonel: dP.toJSON(),
 					status: "assigned",
@@ -164,31 +139,20 @@ export default {
 			}
 			const currLocation = [19, 19];
 			const pricePerUnit = 20;
-			const { name, number, lat, long, address, quantity } = args;
+			const { customerName, customerNumber, lat, long, customerAddress, quantity } = args;
 			const distance = Math.sqrt(Math.pow((currLocation[0] - parseFloat(lat.toString())), 2) + Math.pow(currLocation[1] - parseFloat(long.toString()), 2));
 			// console.log(name, number, lat.toString(), long.toString(), address, quantity, distance, pricePerUnit * parseInt(quantity.toString()));
-			let filename = `${name}_${Date.now()}.png`;
+			let filename = `${customerName}_${Date.now()}.png`;
 			const barcodePath = resolve(__dirname, "..", "..", "barcodes", filename);
-			await qrcode.toFile(barcodePath, md5(`${name}_${number}_${address}_${distance}_${quantity}`));
+			await qrcode.toFile(barcodePath, md5(`${customerName}_${customerNumber}_${customerAddress}_${distance}_${quantity}`));
 			const newO = (await order.create({
-				customerName: name,
-				customerNumber: number,
-				customerAddress: address,
+				customerName, customerNumber, customerAddress, distance, quantity,
 				price: pricePerUnit * parseInt(quantity.toString()),
-				distance, quantity, barcodePath: `/barcodes/${filename}`
+				barcodePath: `/barcodes/${filename}`
 			}));
 			const newOrder = (await newO.populate("deliveryPersonel").execPopulate()).toJSON();
 			let o: Order = {
-				name: name.toString(),
-				number: number.toString(),
-				address: address.toString(),
-				id: newOrder.id.toString(),
-				quantity: parseInt(quantity.toString()),
-				price: newOrder.price,
-				distance,
-				barcodePath: `/barcodes/${filename}`,
-				status: newOrder.status,
-				deliveryPersonel: newOrder.deliveryPersonel,
+				...newOrder,
 				relativeArrivalTime: newOrder.arrivalTime.getTime() - startTime[0]
 			}
 			console.log(o);
@@ -196,12 +160,12 @@ export default {
 			return o;
 		},
 		completeOrder: async (_: void, args: GraphQLFieldConfigArgumentMap): Promise<boolean> => {
-			const { id, text } = args;
-			const dP = (await deliveryPersonel.findById(id.toString()).populate("currentOrder"));
+			const { deliveryPersonelId, text } = args;
+			const dP = (await deliveryPersonel.findById(deliveryPersonelId.toString()).populate("currentOrder"));
 			if (dP === null || dP === undefined) {
-				throw new ApolloError(`delivery personel with id - ${id.toString()} does not exist.Please check the deliveryPersonelId`, "INVALID_DELIVERY_PERSONEL_ID");
+				throw new ApolloError(`delivery personel with id - ${deliveryPersonelId.toString()} does not exist.Please check the deliveryPersonelId`, "INVALID_DELIVERY_PERSONEL_ID");
 			} else if (dP.toJSON().currentOrder === undefined || dP.toJSON().currentOrder === null) {
-				throw new ApolloError(`delivery personel with id - ${id.toString()} is currently idle. Please accept an order first`, "DELIVERY_PERSONEL_IDLE");
+				throw new ApolloError(`delivery personel with id - ${deliveryPersonelId.toString()} is currently idle. Please accept an order first`, "DELIVERY_PERSONEL_IDLE");
 			}
 			const { customerName, customerAddress, customerNumber, distance, quantity } = dP.toJSON().currentOrder;
 			const OrderId = dP.toJSON().currentOrder.id;

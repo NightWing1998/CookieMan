@@ -20,7 +20,8 @@ http.createServer(app).listen(config.PORT, (): void => {
 		useUnifiedTopology: true,
 		useCreateIndex: true,
 		autoIndex: true,
-		useNewUrlParser: true
+		useNewUrlParser: true,
+		useFindAndModify: true
 	}).then((): void => {
 		console.log(`Connected to mongodb ${config.MONGODB_URI}`);
 	}).catch((err: Error): void => {

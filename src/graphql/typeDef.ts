@@ -10,9 +10,9 @@ export default gql`
 	}
 	type Order {
 		id: ID!,
-		name: String!,
-		number: String!,
-		address: String!,
+		customerName: String!,
+		customerNumber: String!,
+		customerAddress: String!,
 		quantity: Int!,
 		price: Int!,
 		distance: Int!,
@@ -34,15 +34,15 @@ export default gql`
 			number: String!,
 		): DeliveryPersonel,
 		placeOrder(
-			name: String!,
-			number: String!,
-			address: String!,
+			customerName: String!,
+			customerNumber: String!,
+			customerAddress: String!,
 			quantity: Int!,
 			lat: Float!,
 			long: Float!
 		): Order!,
 		completeOrder(
-			id: ID!,
+			deliveryPersonelId: ID!,
 			text: String!
 		): Boolean!
 	}
