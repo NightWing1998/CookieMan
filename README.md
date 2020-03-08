@@ -6,7 +6,7 @@ We sell cookies online to people who can buy them.
 
 * Summary: It is the backend for a cookie delivery application
 * Version: 1.0.0
-* URL: https://cookieman98.herokuapp.com/
+* URL: https://cookieman98.herokuapp.com/api/graphql
 
 ### How do I get set up? ###
 
@@ -70,7 +70,7 @@ We sell cookies online to people who can buy them.
  3. Flow
       1. Add delivery personels to the system (addDeliveryPersonel)
       2 Order cookies from the store(placeOrder) and subscribe to order updates(orderTracking)
-      3. Long polling by delivery personel client until order is available and delivery personel is free.
+      3. Long polling by delivery personel client until order is available and delivery personel is free. ( Implemented on frontend for a static delivery personel currently with id: "5e654b57b1256b0017e6af57" on <a href="https://cookieman98.herokuapp.com/#/delivery">this</a> route)
       4. Orders are sent out on the basis of priority queue in which priority is decided on the basis of 2 parameters:
           * If orders arrived 10 mins apart each other then the order that came first should be served first else
           * The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
