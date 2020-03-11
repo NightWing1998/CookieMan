@@ -1,7 +1,7 @@
 import { Schema, model, MongooseDocument } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
-const DeliveryPersonel: Schema = new Schema({
+const CustomerSchema = new Schema({
 	userId: {
 		type: Schema.Types.ObjectId,
 		required: true,
@@ -21,6 +21,6 @@ const DeliveryPersonel: Schema = new Schema({
 		returnedDocument.id = doc._id.toString();
 		delete returnedDocument._id;
 	}
-});
+});;
 
-export default model("DeliveryPersonel", DeliveryPersonel);
+export default model("Customer", CustomerSchema);

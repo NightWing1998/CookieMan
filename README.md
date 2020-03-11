@@ -60,7 +60,7 @@ We sell cookies online to people who can buy them.
 		): Boolean!
 	},
 	type Subscription {
-    // Subscription endpoint for customers to get live updates of their order
+    # Subscription endpoint for customers to get live updates of their order
 		orderTracking(
 			orderId: ID!
 		): Order!

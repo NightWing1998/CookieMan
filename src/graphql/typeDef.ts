@@ -1,41 +1,46 @@
 import { gql } from "apollo-server-express";
 
 export default gql`
-	type DeliveryPersonel {
+	type User {
 		name: String!,
 		number: String!,
 		id: ID!,
-		currentOrder: ID,
+		currentOrders: [ID]!,
 		history: [ID]!
 	}
+	type token{
+		token: String!
+	}
 	type Order {
-		id: ID!,
-		customerName: String!,
-		customerNumber: String!,
+		userId: User!,
 		customerAddress: String!,
 		quantity: Int!,
 		price: Int!,
 		distance: Int!,
 		barcodePath: String!,
 		status: String!,
-		deliveryPersonel: DeliveryPersonel
+		deliveryPersonel: User
 	}
 	type Query {
 		hello : String!,
-		getDeliveryPersonels(
-			id: ID
-		): [DeliveryPersonel!]!,
-		getOrders(id: ID): [Order]!,
-		acceptOrderForDelivery(deliveryPersonelId: ID!): Order
+		getUsers(
+			category: String, 
+			page: Int
+		): [User!]!,
+		getOrders(id: ID): [Order!]!,
+		acceptOrderForDelivery(deliveryPersonelId: ID!): [Order!]!
 	}
 	type Mutation {
-		addDeliveryPersonel(
+		addUser(
+			email: String!,
 			name: String!,
 			number: String!,
-		): DeliveryPersonel,
+			address: String,
+			password: String!,
+			category: String!
+		): token!,
 		placeOrder(
-			customerName: String!,
-			customerNumber: String!,
+			userId: ID!,
 			customerAddress: String!,
 			quantity: Int!,
 			lat: Float!,
@@ -44,7 +49,11 @@ export default gql`
 		completeOrder(
 			deliveryPersonelId: ID!,
 			text: String!
-		): Boolean!
+		): Boolean!,
+		login(
+			email: String!,
+			password: String!
+		): token!
 	},
 	type Subscription {
 		orderTracking(

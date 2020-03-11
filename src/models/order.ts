@@ -1,22 +1,18 @@
 import { Schema, model, MongooseDocument } from "mongoose";
 
 const Order: Schema = new Schema({
-	customerName: {
-		type: String,
-		required: true
+	userId: {
+		type: Schema.Types.ObjectId,
+		required: true,
+		ref: "User"
 	},
 	customerAddress: {
 		type: String,
 		required: true
 	},
-	customerNumber: {
-		type: String,
-		maxlength: 10,
-		minlength: 10,
-	},
 	deliveryPersonel: {
 		type: Schema.Types.ObjectId,
-		ref: "DeliveryPersonel"
+		ref: "User"
 	},
 	barcodePath: {
 		type: String,

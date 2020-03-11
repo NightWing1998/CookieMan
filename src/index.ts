@@ -6,6 +6,8 @@ import fs from "fs";
 import { resolve } from "path";
 
 import { connect } from "mongoose";
+import User from "./models/user";
+import { hashSync, genSaltSync } from "bcrypt";
 
 const httpServer = http.createServer(app);
 
@@ -28,6 +30,28 @@ httpServer.listen(config.PORT, (): void => {
 		useFindAndModify: false
 	}).then((): void => {
 		console.log(`Connected to mongodb ${config.MONGODB_URI}`);
+		User.findOne({
+			category: "admin"
+		})
+			.then((result) => {
+				if (result === null) {
+					User.create({
+						email: "mary.admin@cook.io",
+						name: "Mary",
+						password: hashSync("passwordMary", genSaltSync(config.SALT_ROUNDS)),
+						number: "9999999999",
+						category: "admin"
+					}).then((res) => {
+						console.log(`Admin user created!! ${JSON.stringify(res.toJSON())}`);
+					}).catch((err) => {
+						console.error(`Failed to create admin : ${err}`);
+					});
+				} else {
+					console.log(`Admin user found: ${JSON.stringify(result.toJSON())}`)
+				}
+			}).catch((err) => {
+				console.error(`Error on fetching admin user details: ${err}`);
+			});
 	}).catch((err: Error): void => {
 		console.error(`Error in connecting to ${config.MONGODB_URI}: \n${err}`);
 	})

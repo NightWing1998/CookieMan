@@ -1,12 +1,14 @@
 import { Request, NextFunction, Response } from "express";
 import { GraphQLRequestContext } from "apollo-server-types";
 import { GraphQLError } from "graphql";
+
+import { verify } from "jsonwebtoken";
 import config from "./config";
 
 export const requestLogger = (req: Request, _: Response, next: NextFunction): void => {
 	if (req.path === `/api${config.GRAPHQL_ROUTE}`)
-		console.log(`# Host: ${req.headers["x-forwarded-host"] || req.hostname}\tRemote Address: ${req.headers["x-forwarded-for"] || req.connection.remoteAddress}\tMethod: ${req.method}\tPath: ${req.path}\t`);
-	else console.log(`# Host: ${req.headers["x-forwarded-host"] || req.hostname}\tRemote Address: ${req.headers["x-forwarded-for"] || req.connection.remoteAddress}\tMethod: ${req.method}\tPath: ${req.path}\tBody: ${JSON.stringify(req.body)}\tQuery-Params: ${JSON.stringify(req.query)}`);
+		console.log(`# Host: ${req.headers["x-forwarded-host"] || req.hostname}\tRemote Address: ${req.headers["x-forwarded-for"] || req.connection.remoteAddress}\tMethod: ${req.method}\tPath: ${req.path}\tCookies: ${req.signedCookies}`);
+	else console.log(`# Host: ${req.headers["x-forwarded-host"] || req.hostname}\tRemote Address: ${req.headers["x-forwarded-for"] || req.connection.remoteAddress}\tMethod: ${req.method}\tPath: ${req.path}\tBody: ${JSON.stringify(req.body)}\tQuery-Params: ${JSON.stringify(req.query)}\tCookies: ${req.signedCookies}`);
 	next();
 }
 
@@ -36,4 +38,28 @@ export const GraphqlRequestLogger = (): any => ({
 			}
 		}
 	}
-})
+});
+
+export const tokenExtractor = (req: Request, res: Response, next: NextFunction): void => {
+	const authorization: string | undefined = req.get("authorization");
+	try {
+		if (authorization && authorization.toLowerCase().startsWith("bearer ")) {
+			let obj = verify(authorization.substring(7), config.JWT_KEY);
+			if (typeof obj !== "object") {
+				obj = {}
+			}
+			req.signedCookies = {
+				token: authorization.substring(7),
+				isAuthenticated: true,
+				...obj
+			}
+		} else {
+			req.signedCookies = {
+				isAuthenticated: false
+			};
+		}
+		next();
+	} catch (err) {
+		res.status(400).json({ ...err, token: authorization?.substring(7) });
+	}
+}
