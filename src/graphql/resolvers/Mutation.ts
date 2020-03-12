@@ -1,6 +1,5 @@
 import { GraphQLFieldConfigArgumentMap } from "graphql";
 
-import PriorityQueue from "ts-priority-queue";
 import { Order, token } from "../interfaces";
 
 import { ApolloError, PubSub } from "apollo-server-express";
@@ -20,7 +19,7 @@ import md5 from "md5";
 
 import { resolve } from "path";
 
-export const MutationResolver = (OrdersQueue: PriorityQueue<Order>, multipleOrders: Order[][], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
+export const MutationResolver = (multipleOrders: Order[][], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
 	addUser: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<token> => {
 		const { name, number, email, address, category, password } = args;
 		if (context.isAuthenticated) {
@@ -107,7 +106,6 @@ export const MutationResolver = (OrdersQueue: PriorityQueue<Order>, multipleOrde
 			arrivalTime: current
 		}
 		// console.log(o);
-		OrdersQueue.queue(o);
 		const angleForEachSection = Math.floor(360 / config.SECTIONS);
 		let index = o.angle / angleForEachSection;
 		if (multipleOrders[index]) {
@@ -115,6 +113,7 @@ export const MutationResolver = (OrdersQueue: PriorityQueue<Order>, multipleOrde
 		} else {
 			multipleOrders[index] = [o];
 		}
+		console.log("@@", multipleOrders);
 		return o;
 	}
 });

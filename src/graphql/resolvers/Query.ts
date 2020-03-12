@@ -9,9 +9,7 @@ import { ApolloError, PubSub } from "apollo-server-express";
 import Users from "../../models/user";
 // import order from "../../models/order";
 
-import PriorityQueue from "ts-priority-queue";
-
-export const QueryResolver = (OrdersQueue: PriorityQueue<Order>, pubsub: PubSub) => ({
+export const QueryResolver = (MultipleOrders: Order[][], pubsub: PubSub) => ({
 	// hello: (_: void, args: void, context: any): string => {
 	hello: (): string => {
 		// console.log("context: ", context);
