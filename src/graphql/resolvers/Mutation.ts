@@ -10,10 +10,17 @@ import { hashSync, compareSync, genSaltSync } from "bcrypt";
 import { sign } from "jsonwebtoken";
 
 import Users from "../../models/user";
+import order from "../../models/order";
 
 import config from "../../utils/config";
+import { MongooseDocument } from "mongoose";
 
-export const MutationResolver = (OrderQueue: PriorityQueue<Order>, pubsub: PubSub) => ({
+import qrcode from "qrcode";
+import md5 from "md5";
+
+import { resolve } from "path";
+
+export const MutationResolver = (OrdersQueue: PriorityQueue<Order>, multipleOrders: Order[][], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
 	addUser: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<token> => {
 		const { name, number, email, address, category, password } = args;
 		if (context.isAuthenticated) {
@@ -61,6 +68,54 @@ export const MutationResolver = (OrderQueue: PriorityQueue<Order>, pubsub: PubSu
 		} else {
 			throw new ApolloError("Email ID or password inavlid.", "INVALID_ARGUMENTS");
 		}
+	},
+	placeOrder: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<Order> => {
+		const { id, category, isAuthenticated, email } = context;
+		if (!isAuthenticated) {
+			throw new ApolloError(`Login required. Please login first`, "FORBIDDEN");
+		} else if (category === "deliverypersonel") {
+			// esentially an admin or customer can place an order, hence
+			throw new ApolloError(`Invalid category {${category}}. Cannot place order`, "FORBIDDEN");
+		}
+
+		const customer: MongooseDocument | undefined | null = await Users.findById(id);
+		if (customer === null || customer === undefined || customer.get("category") !== category) {
+			throw new ApolloError(`Invalid data in token. Please login again`, "INVALID_TOKEN");
+		}
+
+		const { lat, long, customerAddress, quantity } = args;
+		const distance = Math.sqrt(Math.pow((currLocation[0] - parseFloat(lat.toString())), 2) + Math.pow(currLocation[1] - parseFloat(long.toString()), 2));
+		let orderAddress: string = customer.get("defaultAddress") || "";
+		if (customerAddress !== null && customerAddress !== undefined) {
+			orderAddress = customerAddress.toString();
+		}
+		const current = Date.now();
+		let filename = `${email}_${current}.png`;
+		const barcodePath = resolve(__dirname, "..", "..", "..", "barcodes", filename);
+		await qrcode.toFile(barcodePath, md5(`${email}_${customerAddress}_${distance}_${quantity}_${current}`));
+		const newO = (await order.create({
+			customerAddress: orderAddress, distance, quantity,
+			price: pricePerUnit * parseInt(quantity.toString()),
+			barcodePath: `/barcodes/${filename}`,
+			arrivalTime: new Date(current),
+			user: id,
+			angle: (Math.floor(Math.atan2(parseFloat(lat.toString()) - currLocation[0], parseFloat(long.toString()) - currLocation[1]) * 180 / Math.PI) + 360) % 360
+		})).toJSON();
+		let o: Order = {
+			...newO,
+			user: customer.toJSON(),
+			arrivalTime: current
+		}
+		// console.log(o);
+		OrdersQueue.queue(o);
+		const angleForEachSection = Math.floor(360 / config.SECTIONS);
+		let index = o.angle / angleForEachSection;
+		if (multipleOrders[index]) {
+			multipleOrders[index].push(o)
+		} else {
+			multipleOrders[index] = [o];
+		}
+		return o;
 	}
 });
 

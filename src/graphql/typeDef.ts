@@ -12,7 +12,7 @@ export default gql`
 		token: String!
 	}
 	type Order {
-		userId: User!,
+		user: User!,
 		customerAddress: String!,
 		quantity: Int!,
 		price: Int!,
@@ -40,8 +40,7 @@ export default gql`
 			category: String!
 		): token!,
 		placeOrder(
-			userId: ID!,
-			customerAddress: String!,
+			customerAddress: String,
 			quantity: Int!,
 			lat: Float!,
 			long: Float!

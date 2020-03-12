@@ -18,5 +18,6 @@ export default {
 	MONGODB_URI: configSetter("MONGODB_URI") || "mongodb://mongo:27017/cookies",
 	GRAPHQL_ROUTE: configSetter("GRAPHQL_ROUTE") || "/graphql",
 	JWT_KEY: configSetter("JWT_KEY"),
-	SALT_ROUNDS: parseInt(configSetter("SALT_ROUNDS"))
+	SALT_ROUNDS: parseInt(configSetter("SALT_ROUNDS")),
+	SECTIONS: parseInt(configSetter("SECTIONS")) || 12
 }

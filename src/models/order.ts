@@ -1,7 +1,7 @@
 import { Schema, model, MongooseDocument } from "mongoose";
 
 const Order: Schema = new Schema({
-	userId: {
+	user: {
 		type: Schema.Types.ObjectId,
 		required: true,
 		ref: "User"
@@ -38,6 +38,10 @@ const Order: Schema = new Schema({
 		type: String,
 		required: true,
 		default: "ordered"
+	},
+	angle: {
+		type: Number,
+		required: true
 	}
 }).set("toJSON", {
 	transform: (doc: any, returnedDocument: MongooseDocument): void => {

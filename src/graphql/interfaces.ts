@@ -3,12 +3,11 @@ export interface User {
 	number: string,
 	history?: string[],
 	id: string,
-	currentOrders?: [string]
+	currentOrders?: string[]
 };
 
 export interface Order {
-	customerName: string,
-	customerNumber: string,
+	user: User,
 	customerAddress: string,
 	id: string,
 	quantity: number,
@@ -16,7 +15,8 @@ export interface Order {
 	distance: number,
 	barcodePath: string,
 	status: string,
-	relativeArrivalTime: number,
+	arrivalTime: number,
+	angle: number,
 	deliveryPersonel?: User
 }
 
