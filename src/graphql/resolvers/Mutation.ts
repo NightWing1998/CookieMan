@@ -1,6 +1,6 @@
 import { GraphQLFieldConfigArgumentMap } from "graphql";
 
-import { Order, token } from "../interfaces";
+import { Order, token } from "../../utils/interfaces";
 
 import { ApolloError, PubSub } from "apollo-server-express";
 
@@ -19,7 +19,11 @@ import md5 from "md5";
 
 import { resolve } from "path";
 
-export const MutationResolver = (multipleOrders: Order[][], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
+import PriorityQueue from "ts-priority-queue";
+
+import { comparator } from "../../utils/helper";
+
+export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
 	addUser: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<token> => {
 		const { name, number, email, address, category, password } = args;
 		if (context.isAuthenticated) {
@@ -72,8 +76,7 @@ export const MutationResolver = (multipleOrders: Order[][], pubsub: PubSub, curr
 		const { id, category, isAuthenticated, email } = context;
 		if (!isAuthenticated) {
 			throw new ApolloError(`Login required. Please login first`, "FORBIDDEN");
-		} else if (category === "deliverypersonel") {
-			// esentially an admin or customer can place an order, hence
+		} else if (category !== "customer") {
 			throw new ApolloError(`Invalid category {${category}}. Cannot place order`, "FORBIDDEN");
 		}
 
@@ -91,7 +94,7 @@ export const MutationResolver = (multipleOrders: Order[][], pubsub: PubSub, curr
 		const current = Date.now();
 		let filename = `${email}_${current}.png`;
 		const barcodePath = resolve(__dirname, "..", "..", "..", "barcodes", filename);
-		await qrcode.toFile(barcodePath, md5(`${email}_${customerAddress}_${distance}_${quantity}_${current}`));
+		await qrcode.toFile(barcodePath, md5(`${customerAddress}_${distance}_${quantity}_${current}`));
 		const newO = (await order.create({
 			customerAddress: orderAddress, distance, quantity,
 			price: pricePerUnit * parseInt(quantity.toString()),
@@ -109,12 +112,51 @@ export const MutationResolver = (multipleOrders: Order[][], pubsub: PubSub, curr
 		const angleForEachSection = Math.floor(360 / config.SECTIONS);
 		let index = o.angle / angleForEachSection;
 		if (multipleOrders[index]) {
-			multipleOrders[index].push(o)
+			multipleOrders[index].queue(o)
 		} else {
-			multipleOrders[index] = [o];
+			multipleOrders[index] = new PriorityQueue<Order>({
+				comparator,
+				initialValues: [o]
+			});
 		}
-		console.log("@@", multipleOrders);
+		// console.log("@@", multipleOrders);
 		return o;
+	},
+	completeOrder: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<boolean> => {
+		const { isAuthenticated, id, category } = context;
+
+		if (!isAuthenticated) {
+			throw new ApolloError("Login required.", "FORBIDDEN");
+		}
+		if (category !== "deliverypersonel") {
+			throw new ApolloError(`Cannot complete order. User in wrong category.`, "FORBIDDEN");
+		}
+		const dP = await Users.findById(id);
+		if (dP === null || dP === undefined || dP.get("category") !== category) {
+			throw new ApolloError("Invalid data in token. Please login again.", "INVALID_TOKEN");
+		}
+		const { orderId, text } = args;
+		const currOrder = await order.findOne({
+			_id: orderId.toString(),
+			status: "assigned",
+			deliveryPersonel: id
+		});
+		if (currOrder === null || currOrder === undefined) {
+			throw new ApolloError("Invalid order id.Please try again.", "INAVLID_ORDER_ID");
+		}
+		const { customerAddress, distance, quantity, arrivalTime } = currOrder.toJSON();
+		if (md5(`${customerAddress}_${distance}_${quantity}_${arrivalTime.getTime()}`) === text.toString()) {
+			const updatedOrder = (await order.findByIdAndUpdate(currOrder._id.toString(), {
+				...currOrder.toJSON(),
+				status: "delivered"
+			}, { new: true }).populate("user").populate("deliveryPersonel"))?.toJSON();
+
+			pubsub.publish("ORDER_UPDATE", {
+				orderTracking: updatedOrder
+			});
+
+			return true;
+		} else return false;
 	}
 });
 

@@ -1,15 +1,28 @@
-// import { GraphQLFieldConfigArgumentMap } from "graphql";
+import { GraphQLFieldConfigArgumentMap } from "graphql";
 
-import { User, Order } from "../interfaces";
+import { User, Order } from "../../utils/interfaces";
 
 import { ApolloError, PubSub } from "apollo-server-express";
 
-// import { MongooseDocument } from "mongoose";
+import { MongooseDocument } from "mongoose";
 
 import Users from "../../models/user";
-// import order from "../../models/order";
+import order from "../../models/order";
 
-export const QueryResolver = (MultipleOrders: Order[][], pubsub: PubSub) => ({
+import PriorityQueue from "ts-priority-queue";
+
+// O(n) allowed as length of mo will be no. of sections which should be maximum of 360(worst case)
+const findMaxOrdersInACluster = (mo: PriorityQueue<Order>[]): number[] => {
+	let m = 0, loc = -1;
+	for (let i = 0; i < mo.length; i++) {
+		if (mo[i] && mo[i].length > m) {
+			loc = i; m = mo[i].length;
+		}
+	}
+	return [m, loc];
+}
+
+export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: PubSub) => ({
 	// hello: (_: void, args: void, context: any): string => {
 	hello: (): string => {
 		// console.log("context: ", context);
@@ -44,71 +57,91 @@ export const QueryResolver = (MultipleOrders: Order[][], pubsub: PubSub) => ({
 			throw new ApolloError("Invalid data in token", "FORBIDDEN");
 		}
 	},
-	// getOrders: async (_: void, args: GraphQLFieldConfigArgumentMap): Promise<any> => {
-	// 	const { id } = args;
-	// 	if (id === undefined) {
-	// 		const os = (await order.find({}));
-	// 		return os.map(async (og: MongooseDocument): Promise<Order> => {
-	// 			const o = (await og.populate("deliveryPersonel").execPopulate()).toJSON();
-	// 			return ({
-	// 				...o,
-	// 				arrivalTime: o.arrivalTime.getTime()
-	// 			})
-	// 		})
-	// 	} else {
-	// 		const og = (await order.findById(id).populate("deliveryPersonel"));
-	// 		if (og === null) {
-	// 			throw new ApolloError(`${id} order does not exist.`, "INVALID_ORDER_ID");
-	// 		} else {
-	// 			const o = og.toJSON();
-	// 			// console.log(o);
-	// 			return [{
-	// 				...o,
-	// 				arrivalTime: o.arrivalTime.getTime()
-	// 			}];
-	// 		}
-	// 	}
-	// },
-	// acceptOrderForDelivery: async (_: void, args: GraphQLFieldConfigArgumentMap): Promise<Order | null> => {
-	// 	if (OrdersQueue.length === 0) {
-	// 		return null;
-	// 	} else {
-	// 		const { deliveryPersonelId } = args;
-	// 		const dP = await Users.findById(deliveryPersonelId.toString());
-	// 		if (dP === null) {
-	// 			throw new ApolloError(`delivery personel with id - ${deliveryPersonelId} does not exist. Please check the deliveryPersonelId`, "INVALID_DELIVERY_PERSONEL_ID");
-	// 		} else if (dP.toJSON().currentOrder !== undefined && dP.toJSON().currentOrder !== null) {
-	// 			throw new ApolloError(`delivery personel with id - ${deliveryPersonelId} is already assigned order - ${dP.toJSON().currentOrder}. Please complete that first`, "DELIVERY_PERSONAL_BUSY");
-	// 		}
-	// 		const orderFromQueue = OrdersQueue.dequeue();
-	// 		const oldOrder = await order.findById(orderFromQueue.id);
-	// 		if (oldOrder === null || oldOrder.toJSON().status !== "ordered") {
-	// 			throw new ApolloError(`Server has invalid cache. Please report this issue.`, "INTERNAL_SERVER_ERROR");
-	// 		}
-	// 		const oJ = oldOrder.toJSON();
-	// 		const updatedOrder: Order = {
-	// 			...oJ,
-	// 			arrivalTime: oJ.arrivalTime.getTime(),
-	// 			deliveryPersonel: dP.toJSON(),
-	// 			status: "assigned",
-	// 		};
-	// 		const newStatusOfDP = {
-	// 			...dP.toJSON(),
-	// 			history: [...dP.toJSON().history].concat(updatedOrder.id),
-	// 			currentOrder: updatedOrder.id
-	// 		};
-	// 		await dP.updateOne(newStatusOfDP);
-	// 		await oldOrder.updateOne({
-	// 			...updatedOrder,
-	// 			deliveryPersonel: dP._id,
-	// 			status: "assigned",
-	// 		});
-	// 		pubsub.publish("ORDER_UPDATE", {
-	// 			orderTracking: updatedOrder
-	// 		});
-	// 		return updatedOrder;
-	// 	}
-	// }
+	acceptOrderForDelivery: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<Order[] | null> => {
+		const { isAuthenticated, id, category } = context;
+		if (!isAuthenticated) {
+			throw new ApolloError("Login required to accept orders.", "FORBIDDEN");
+		} else if (category !== "deliverypersonel") {
+			throw new ApolloError(`Invalid category {${category}} for accepting orders.`, "FORBIDDEN");
+		}
+		let [maxOrders, index] = findMaxOrdersInACluster(MultipleOrders);
+		if (maxOrders === 0) {
+			return null;
+		}
+
+		// SETTING A LIMIT ON MAX NO. OF ORDERS THAT A DELIVERY PERSON CAN TAKE AT A TIME, CAN HELP SCALE
+		let noOfOrders = Math.min(maxOrders, 10);
+		let deliverPersonelId = id;
+		if (category === "admin") {
+			deliverPersonelId = args.deliverPersonelId;
+		}
+		const dP = (await Users.findById(deliverPersonelId));
+		if (dP === null || dP === undefined || dP.get("category") !== category) {
+			throw new ApolloError(`Inavlid token. Please login again`, "FORBIDDEN");
+		}
+
+		const fetchcurrentOrders = await order.find({ deliveryPersonel: deliverPersonelId, status: "assigned" });
+
+		if (fetchcurrentOrders.length !== 0) {
+			throw new ApolloError(`You already have pending orders. Please complete them first.`, "FORBIDDEN");
+		}
+		const toBeDelivered: Order[] = [];
+		const updatedDP: User = { ...dP.toJSON() };
+		updatedDP.currentOrders = [];
+		for (let i = 0; i < noOfOrders; i++) {
+			let tempOrder = MultipleOrders[index].dequeue();
+			updatedDP.currentOrders.push(tempOrder.id);
+			updatedDP.history?.push(tempOrder.id);
+
+			tempOrder.deliveryPersonel = updatedDP;
+			tempOrder.status = "assigned"
+			await order.findByIdAndUpdate(tempOrder.id, {
+				...tempOrder,
+				user: tempOrder.user.id,
+				deliveryPersonel: tempOrder.deliveryPersonel.id
+			});
+
+			pubsub.publish("ORDER_UPDATE", {
+				orderTracking: tempOrder
+			});
+
+			toBeDelivered.push(tempOrder);
+		}
+
+		await Users.findByIdAndUpdate(updatedDP.id, updatedDP);
+
+		return toBeDelivered;
+	},
+	getOrders: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<any> => {
+		const { isAuthenticated, id, category } = context;
+		if (!isAuthenticated) {
+			throw new ApolloError("Login Required", "FORBIDDEN");
+		}
+		const u = await Users.findById(id);
+		if (u === null || u === undefined || u.get("category") !== category) {
+			throw new ApolloError(`Inavlid token. Please login again`, "FORBIDDEN");
+		}
+
+		const { id: orderId, status } = args;
+		let options: any = {};
+		if (orderId) {
+			options["_id"] = orderId.toString();
+		}
+		if (status) {
+			options["status"] = status.toString();
+		}
+		if (category === "deliverypersonel") {
+			options["deliveryPersonel"] = id;
+
+		} else if (category === "customer") {
+			options["user"] = id;
+		}
+
+		const o = (await order.find(options)).map(async (or: MongooseDocument) => await (await or.populate("user").populate("deliveryPersonel").execPopulate()).toJSON());
+
+		return o;
+	}
+
 });
 
 export default QueryResolver;

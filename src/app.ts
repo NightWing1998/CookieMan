@@ -23,7 +23,7 @@ export const server = new ApolloServer({
 	// plugins: [GraphqlRequestLogger],
 	// formatError: MongooseErrorHandler,
 	context: ({ req }) => {
-		if (req.signedCookies) {
+		if (req && req.signedCookies) {
 			return req.signedCookies;
 		}
 	}

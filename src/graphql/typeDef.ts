@@ -12,6 +12,7 @@ export default gql`
 		token: String!
 	}
 	type Order {
+		id: ID!,
 		user: User!,
 		customerAddress: String!,
 		quantity: Int!,
@@ -27,8 +28,8 @@ export default gql`
 			category: String, 
 			page: Int
 		): [User!]!,
-		getOrders(id: ID): [Order!]!,
-		acceptOrderForDelivery(deliveryPersonelId: ID!): [Order!]!
+		getOrders(id: ID, status: String): [Order!]!,
+		acceptOrderForDelivery(deliveryPersonelId: ID): [Order!]
 	}
 	type Mutation {
 		addUser(
@@ -46,7 +47,7 @@ export default gql`
 			long: Float!
 		): Order!,
 		completeOrder(
-			deliveryPersonelId: ID!,
+			orderId: ID!,
 			text: String!
 		): Boolean!,
 		login(
