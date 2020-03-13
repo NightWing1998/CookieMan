@@ -82,7 +82,6 @@ export const UserResolver = () => ({
 					.map(oj => oj.toJSON().id);
 			}
 		} else if (context.category === "admin") {
-			console.log(parent);
 			if (parent.category === "deliverypersonel") {
 				return (await order.find({
 					deliveryPersonel: parent.id,
