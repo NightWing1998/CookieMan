@@ -20,7 +20,8 @@ export default gql`
 		distance: Int!,
 		barcodePath: String!,
 		status: String!,
-		deliveryPersonel: User
+		deliveryPersonel: User,
+		eta: String
 	}
 	type Query {
 		hello : String!,
@@ -28,7 +29,7 @@ export default gql`
 			category: String, 
 			page: Int
 		): [User!]!,
-		getOrders(id: ID, status: String): [Order!]!,
+		getOrders(id: ID, status: String, page: Int): [Order!]!,
 		acceptOrderForDelivery(deliveryPersonelId: ID): [Order!]
 	}
 	type Mutation {

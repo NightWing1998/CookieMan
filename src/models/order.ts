@@ -42,7 +42,16 @@ const Order: Schema = new Schema({
 	angle: {
 		type: Number,
 		required: true
-	}
+	},
+	lat: {
+		type: Number,
+		required: true
+	},
+	long: {
+		type: Number,
+		required: true
+	},
+	eta: Date
 }).set("toJSON", {
 	transform: (doc: any, returnedDocument: MongooseDocument): void => {
 		returnedDocument.id = returnedDocument._id.toString();

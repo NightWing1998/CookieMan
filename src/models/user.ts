@@ -37,7 +37,6 @@ const UserSchema = new Schema({
 		returnDocument.id = doc._id.toString();
 		delete returnDocument._id;
 		delete returnDocument.password;
-		delete returnDocument.category;
 	}
 });
 

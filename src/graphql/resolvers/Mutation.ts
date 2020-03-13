@@ -101,6 +101,7 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 			barcodePath: `/barcodes/${filename}`,
 			arrivalTime: new Date(current),
 			user: id,
+			lat, long,
 			angle: (Math.floor(Math.atan2(parseFloat(lat.toString()) - currLocation[0], parseFloat(long.toString()) - currLocation[1]) * 180 / Math.PI) + 360) % 360
 		})).toJSON();
 		let o: Order = {

@@ -13,11 +13,16 @@ if (configSetter("JWT_KEY") === undefined || configSetter("SALT_ROUNDS") === und
 	throw new Error(`JWT_KEY && SALT_ROUNDS should be defined. Got : ${configSetter("JWT_KEY")} and ${configSetter("SALT_ROUNDS")}`)
 }
 
+if (configSetter("BING_MAPS_KEY") === undefined) {
+	throw new Error(`BING_MAPS_KEY expected. Found - ${configSetter("BING_MAPS_KEY")}`);
+}
+
 export default {
 	PORT: configSetter("PORT") || 8080,
 	MONGODB_URI: configSetter("MONGODB_URI") || "mongodb://mongo:27017/cookies",
 	GRAPHQL_ROUTE: configSetter("GRAPHQL_ROUTE") || "/graphql",
 	JWT_KEY: configSetter("JWT_KEY"),
 	SALT_ROUNDS: parseInt(configSetter("SALT_ROUNDS")),
-	SECTIONS: parseInt(configSetter("SECTIONS")) || 12
+	SECTIONS: parseInt(configSetter("SECTIONS")) || 12,
+	BING_MAPS_KEY: configSetter("BING_MAPS_KEY")
 }

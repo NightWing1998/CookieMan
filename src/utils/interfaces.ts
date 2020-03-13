@@ -17,7 +17,10 @@ export interface Order {
 	status: string,
 	arrivalTime: number,
 	angle: number,
-	deliveryPersonel?: User
+	deliveryPersonel?: User,
+	lat: number,
+	long: number,
+	eta?: Date
 }
 
 export interface token {

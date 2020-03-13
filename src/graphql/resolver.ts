@@ -14,6 +14,7 @@ import { Order } from "../utils/interfaces";
 import UserResolver from "./resolvers/User";
 import QueryResolver from "./resolvers/Query";
 import MutationResolver from "./resolvers/Mutation";
+import OrderResolver from "./resolvers/Order";
 
 import { comparator } from "../utils/helper";
 
@@ -47,7 +48,7 @@ const multipleOrders: PriorityQueue<Order>[] = [];
 
 export default {
 	Query: {
-		...QueryResolver(multipleOrders, pubsub)
+		...QueryResolver(multipleOrders, pubsub, currLocation)
 	},
 	Mutation: {
 		...MutationResolver(multipleOrders, pubsub, currLocation, pricePerUnit)
@@ -66,5 +67,8 @@ export default {
 	},
 	User: {
 		...UserResolver()
+	},
+	Order: {
+		...OrderResolver()
 	}
 };

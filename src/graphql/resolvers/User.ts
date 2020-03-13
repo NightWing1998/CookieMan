@@ -9,10 +9,31 @@ export const UserResolver = () => ({
 		} else if (typeof page !== "number") {
 			page = parseInt(page.toString() || '0');
 		}
-		if ((parent && parent.id && context && context.id && parent.id === context.id) || context.category === "admin") {
+		if ((parent && parent.id && context && context.id && parent.id === context.id)) {
 			if (context.category === "deliverypersonel" || args.category === "deliverypersonel") {
 				return (await order.find({
-					deliveryPersonel: parent.id, status: "asigned"
+					deliveryPersonel: parent.id, status: "assigned"
+				})
+					.skip(page * 10)
+					.limit(10)
+				)
+					.map(oj => oj.toJSON().id);
+			} else {
+				return (await order.find({
+					user: parent.id,
+					status: {
+						$in: ["assigned", "ordered"]
+					}
+				})
+					.skip(page * 10)
+					.limit(10)
+				)
+					.map(oj => oj.toJSON().id);
+			}
+		} else if (context.category === "admin") {
+			if (parent.category === "deliverypersonel") {
+				return (await order.find({
+					deliveryPersonel: parent.id, status: "assigned"
 				})
 					.skip(page * 10)
 					.limit(10)
@@ -42,8 +63,27 @@ export const UserResolver = () => ({
 		} else if (typeof page !== "number") {
 			page = parseInt(page.toString() || '0');
 		}
-		if ((parent && parent.id && context && context.id && parent.id === context.id) || context.category === "admin") {
-			if (context.category === "deliverypersonel" || args.category === "deliverypersonel") {
+		if ((parent && parent.id && context && context.id && parent.id === context.id)) {
+			if (context.category === "deliverypersonel") {
+				return (await order.find({
+					deliveryPersonel: parent.id,
+				})
+					.skip(page * 10)
+					.limit(10)
+				)
+					.map(oj => oj.toJSON().id);
+			} else {
+				return (await order.find({
+					user: parent.id,
+				})
+					.skip(page * 10)
+					.limit(10)
+				)
+					.map(oj => oj.toJSON().id);
+			}
+		} else if (context.category === "admin") {
+			console.log(parent);
+			if (parent.category === "deliverypersonel") {
 				return (await order.find({
 					deliveryPersonel: parent.id,
 				})

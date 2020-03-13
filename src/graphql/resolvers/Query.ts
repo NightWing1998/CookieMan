@@ -11,6 +11,9 @@ import order from "../../models/order";
 
 import PriorityQueue from "ts-priority-queue";
 
+import axios from "axios";
+import config from "../../utils/config";
+
 // O(n) allowed as length of mo will be no. of sections which should be maximum of 360(worst case)
 const findMaxOrdersInACluster = (mo: PriorityQueue<Order>[]): number[] => {
 	let m = 0, loc = -1;
@@ -22,7 +25,7 @@ const findMaxOrdersInACluster = (mo: PriorityQueue<Order>[]): number[] => {
 	return [m, loc];
 }
 
-export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: PubSub) => ({
+export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: PubSub, currLocation: number[]) => ({
 	// hello: (_: void, args: void, context: any): string => {
 	hello: (): string => {
 		// console.log("context: ", context);
@@ -70,7 +73,8 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 		}
 
 		// SETTING A LIMIT ON MAX NO. OF ORDERS THAT A DELIVERY PERSON CAN TAKE AT A TIME, CAN HELP SCALE
-		let noOfOrders = Math.min(maxOrders, 10);
+		let noOfOrders = Math.min(maxOrders, 9);
+		// SPECIFICALLY 9 AS at a time mapbox API can only give results for 10 coordinate points
 		let deliverPersonelId = id;
 		if (category === "admin") {
 			deliverPersonelId = args.deliverPersonelId;
@@ -88,8 +92,38 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 		const toBeDelivered: Order[] = [];
 		const updatedDP: User = { ...dP.toJSON() };
 		updatedDP.currentOrders = [];
+
+		let destLatLong = "";
+
+		for (let i = 0; i < noOfOrders - 1; i++) {
+			let tempOrder = MultipleOrders[index].dequeue()
+			toBeDelivered.push(tempOrder);
+			// destLatLong.push({
+			// 	"latitue": tempOrder.lat,
+			// 	"longitude": tempOrder.long
+			// });
+			destLatLong += `${tempOrder.lat},${tempOrder.long};`
+		};
+		let temp = MultipleOrders[index].dequeue();
+		toBeDelivered.push(temp);
+		destLatLong += `${temp.lat},${temp.long}`
+		// console.log(toBeDelivered);
+		try {
+			const res = (await axios.get(`https://dev.virtualearth.net/REST/v1/Routes/DistanceMatrix?origins=${currLocation[0]},${currLocation[1]}&destinations=${destLatLong}&travelMode=driving&timeUnit=second&key=${config.BING_MAPS_KEY}`)).data;
+			// const res = (await axios.get(`https://dev.virtualearth.net/REST/v1/Routes/DistanceMatrix?origins=47.6044,-122.3345;47.6731,-122.1185;47.6149,-122.1936&destinations=45.5347,-122.6231;47.4747,-122.2057&travelMode=driving&timeUnit=second&key=${config.BING_MAPS_KEY}`)).data;
+
+			// console.log(res.resourceSets[0].resources[0].results);
+			const sumOfAllEta = res.resourceSets[0].resources[0].results.reduce((p: number, c: any): number => p + c.travelDuration, 0)
+			res.resourceSets[0].resources[0].results.forEach((r: any) => {
+				toBeDelivered[r.destinationIndex].eta = new Date(Date.now() + 1000 + sumOfAllEta * 1000 + 360000)
+			});
+		} catch (e) {
+			console.error(e);
+		}
+
+
 		for (let i = 0; i < noOfOrders; i++) {
-			let tempOrder = MultipleOrders[index].dequeue();
+			let tempOrder = toBeDelivered[i];
 			updatedDP.currentOrders.push(tempOrder.id);
 			updatedDP.history?.push(tempOrder.id);
 
@@ -105,11 +139,11 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 				orderTracking: tempOrder
 			});
 
-			toBeDelivered.push(tempOrder);
+			// toBeDelivered.push(tempOrder);
 		}
 
 		await Users.findByIdAndUpdate(updatedDP.id, updatedDP);
-
+		// console.log(toBeDelivered);
 		return toBeDelivered;
 	},
 	getOrders: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<any> => {
@@ -137,8 +171,17 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 			options["user"] = id;
 		}
 
-		const o = (await order.find(options)).map(async (or: MongooseDocument) => await (await or.populate("user").populate("deliveryPersonel").execPopulate()).toJSON());
+		let page: number;
+		if (args.page === undefined) {
+			page = 0
+		} else {
+			page = parseInt(args.page.toString() || '0');
+		}
 
+		const o = await Promise.all((await order.find(options).skip(10 * page).limit(10)).map(async (or: MongooseDocument) => {
+			return await (await or.populate("user").populate("deliveryPersonel").execPopulate()).toJSON()
+		}));
+		// console.log(o);
 		return o;
 	}
 
