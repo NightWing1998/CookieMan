@@ -74,7 +74,6 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 
 		// SETTING A LIMIT ON MAX NO. OF ORDERS THAT A DELIVERY PERSON CAN TAKE AT A TIME, CAN HELP SCALE
 		let noOfOrders = Math.min(maxOrders, 9);
-		// SPECIFICALLY 9 AS at a time mapbox API can only give results for 10 coordinate points
 		let deliverPersonelId = id;
 		if (category === "admin") {
 			deliverPersonelId = args.deliverPersonelId;

@@ -100,9 +100,9 @@ We sell cookies online to people who can buy them.
       1. Add delivery personels to the system (addUser)
       2 Order cookies from the store(placeOrder) and subscribe to order updates(orderTracking)
       3. Long polling by delivery personel client until order is available and delivery personel is free.
-      4. The system v2 has a new clustering technique based on the latitude, longitude of the customer. The system divides the entire area in pseudo sections using angular geometry and any order belonging to the same section is attempted to be delivered together. But the system limits to 9 orders per section to decrease load on the delivery personel as well as map APIs. Each cluster is essentially a priority queue from which the orders are fetched on the basis of 
+      4. The system v2 has a new clustering technique based on the latitude, longitude of the customer. The system divides the entire area in pseudo sections using angular geometry and any order belonging to the same section is attempted to be delivered together. But the system limits to 9 orders per section to decrease load on the delivery personel as well as map APIs. Each cluster is essentially a priority queue from which the orders are fetched on the basis of :
       	* if orders arrived 10 mins apart each other then the order that came first should be served first else
-	* The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
+		* The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
       5. Notify the client about order that is sent out using publish subscriber model of apollo graphQL servers.
       6. Delivery perosnel scans the QR code that is given to customer and return the result to server for validation that cookie is delivered (verification of QR code to authenticate the presence of delivery personel on site).
       7. Client can enjoy cookies now!! And re-order them as well.

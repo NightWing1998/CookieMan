@@ -38,7 +38,7 @@ app.use(tokenExtractor);
 // app.use(requestLogger);
 
 server.applyMiddleware({
-	app, path: `/api${config.GRAPHQL_ROUTE}`, cors: true, bodyParserConfig: {
+	app, path: `/api/v2${config.GRAPHQL_ROUTE}`, cors: true, bodyParserConfig: {
 		inflate: true,
 		strict: true,
 
@@ -49,7 +49,7 @@ const barcodePath = resolve(__dirname, "..", "barcodes");
 
 app.use("/barcodes", express.static(barcodePath));
 
-app.get("/api", (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/v2", (req: Request, res: Response, next: NextFunction) => {
 	res.status(200).json({ "hello": "world" });
 });
 
