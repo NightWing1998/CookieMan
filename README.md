@@ -14,72 +14,101 @@ We sell cookies online to people who can buy them.
 * Configuration: The server needs the following environment variables when in PRODUCTION mode: PORT, GRAPHQL_ROUTE, MONGODB_URI, NODE_ENV. For each and every other mode like dev or test specify these env variables with `_<mode>` for eg PORT_TEST in test mode
 * Dependencies: Can be found in package.json
 * Database configuration: Can be found in models
-* How to run tests
 * Deployment instructions: On local machine either run `docker-compose up` or install mongodb daemon, start that daemon and then `npm start` or `npm run watch`
-* Testing on local machine(only supported on local machine):
-    * Install mongodb on local machine
-    * Configure TEST env like NODE_ENV, PORT_TEST, MONGODB_URI_TEST(mongodb://localhost:27017/cookieman-test) and GRAPHQL_ROUTE_TEST
-    * run local server using `npm run watch` or `npm start`
-    * then run `npm run test`
 
 ### Architecture ###
 
 1. The tech stack for the application is:
     * Backend: TypeScript, ts-node, express, apollo-server-express, graphQL, mongodb
     * Frontend: ReactJS, apollo-client
-  
-2. GraphQL schema:
+
+2. The system has 3 types of user base: admin, delivery personel and customer and hence system revolves around these aspects
+
+3. GraphQL schema:
   ```graphql
-    type Query {
-    # Fetch all Delivery Personel
-		getDeliveryPersonels(id: ID): [DeliveryPersonel!]!,
-    # Fetch all orders
-		getOrders(id: ID): [Order]!,
-    # Long Polling of Order Queue by Delivery Agent when available
-		acceptOrderForDelivery(deliveryPersonelId: ID!): Order
+    	type User {
+		name: String!,
+		number: String!,
+		id: ID!,
+		currentOrders: [ID]!,
+		history: [ID]!
+	}
+	type token{
+		token: String!
+	}
+	type Order {
+		id: ID!,
+		user: User!,
+		customerAddress: String!,
+		quantity: Int!,
+		price: Int!,
+		distance: Int!,
+		barcodePath: String!,
+		status: String!,
+		deliveryPersonel: User,
+		eta: String
+	}
+	type Query {
+		hello : String!,
+		# Fetch All users(if non root for current logged in user only)
+		getUsers(
+			category: String, 
+			page: Int
+		): [User!]!,
+		# Fetch all orders(if non root for current logged in user only)
+		getOrders(id: ID, status: String, page: Int): [Order!]!,
+		# Long Polling query for frontend for delivery personels to accpet new orders
+		acceptOrderForDelivery(deliveryPersonelId: ID): [Order!]
 	}
 	type Mutation {
-    # Add new Deliver Personel
-		addDeliveryPersonel(
+		# Add user(deliveryPersonel or customer) 
+		addUser(
+			email: String!,
 			name: String!,
 			number: String!,
-		): DeliveryPersonel,
-    # Place a new order for cookies
+			address: String,
+			password: String!,
+			category: String!
+		): token!,
+		# Place an order(customer only)
 		placeOrder(
-			customerName: String!,
-			customerNumber: String!,
-			customerAddress: String!,
+			customerAddress: String,
 			quantity: Int!,
 			lat: Float!,
 			long: Float!
 		): Order!,
-    # Order deilvered by Delivery Personel, hence cleanup
+		# Mutation for order completion verification
 		completeOrder(
-			deliveryPersonelId: ID!,
+			orderId: ID!,
 			text: String!
-		): Boolean!
+		): Boolean!,
+		# Mutation to login
+		login(
+			email: String!,
+			password: String!
+		): token!
 	},
 	type Subscription {
-    # Subscription endpoint for customers to get live updates of their order
+		# Subscriptions for usert to track updates
 		orderTracking(
 			orderId: ID!
 		): Order!
 	}
   ```
  
- 3. Flow
-      1. Add delivery personels to the system (addDeliveryPersonel)
+ 4. Flow
+      1. Add delivery personels to the system (addUser)
       2 Order cookies from the store(placeOrder) and subscribe to order updates(orderTracking)
-      3. Long polling by delivery personel client until order is available and delivery personel is free. ( Implemented on frontend for a static delivery personel currently with id: "5e654b57b1256b0017e6af57" on <a href="https://cookieman98.herokuapp.com/#/delivery">this</a> route)
-      4. Orders are sent out on the basis of priority queue in which priority is decided on the basis of 2 parameters:
-          * If orders arrived 10 mins apart each other then the order that came first should be served first else
-          * The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
+      3. Long polling by delivery personel client until order is available and delivery personel is free.
+      4. The system v2 has a new clustering technique based on the latitude, longitude of the customer. The system divides the entire area in pseudo sections using angular geometry and any order belonging to the same section is attempted to be delivered together. But the system limits to 9 orders per section to decrease load on the delivery personel as well as map APIs. Each cluster is essentially a priority queue from which the orders are fetched on the basis of 
+      	* if orders arrived 10 mins apart each other then the order that came first should be served first else
+	* The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
       5. Notify the client about order that is sent out using publish subscriber model of apollo graphQL servers.
       6. Delivery perosnel scans the QR code that is given to customer and return the result to server for validation that cookie is delivered (verification of QR code to authenticate the presence of delivery personel on site).
       7. Client can enjoy cookies now!! And re-order them as well.
       8. Delivery Personel is now free and can again start long polling the server for new orders.
       
-4. Why long polling and not cron job with subscriptions?
+5. Why long polling and not cron job with subscriptions?
   <p>Instead of wasting computational time on guessing when the delivery personel will be available, we make the delivery personel ask for new orders whenever he/she is ready. Drawback is this increases unnecessary new traffic that could be many times useless</p>
   
 ### Demo ###
