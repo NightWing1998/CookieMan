@@ -101,8 +101,8 @@ We sell cookies online to people who can buy them.
       2 Order cookies from the store(placeOrder) and subscribe to order updates(orderTracking)
       3. Long polling by delivery personel client until order is available and delivery personel is free.
       4. The system v2 has a new clustering technique based on the latitude, longitude of the customer. The system divides the entire area in pseudo sections using angular geometry and any order belonging to the same section is attempted to be delivered together. But the system limits to 9 orders per section to decrease load on the delivery personel as well as map APIs. Each cluster is essentially a priority queue from which the orders are fetched on the basis of :
-      	* if orders arrived 10 mins apart each other then the order that came first should be served first else
-		* The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
+      		* if orders arrived 10 mins apart each other then the order that came first should be served first else
+			* The order closer to cookie shop (static (lat: latitude, long: longitude) => (19,19) => coordinates of the cookie shop)
       5. Notify the client about order that is sent out using publish subscriber model of apollo graphQL servers.
       6. Delivery perosnel scans the QR code that is given to customer and return the result to server for validation that cookie is delivered (verification of QR code to authenticate the presence of delivery personel on site).
       7. Client can enjoy cookies now!! And re-order them as well.
@@ -113,11 +113,16 @@ We sell cookies online to people who can buy them.
   
 ### Demo ###
 
-1. Add delivery Personel <img src="https://github.com/NightWing1998/CookieMan/blob/master/addDeliveryPersonal.gif" />
-2. Place Order <img src="https://github.com/NightWing1998/CookieMan/blob/master/placeOrder.gif" />
-3. Delivery personels long polling for orders <img src="https://github.com/NightWing1998/CookieMan/blob/master/long%20polling.gif" />
-4. Delivery personel scanning QR codes <img src="https://github.com/NightWing1998/CookieMan/blob/master/scan%20QR%20code.gif" />
-5. Completing delivery and client side subscription <img src="https://github.com/NightWing1998/CookieMan/blob/master/delivered%20and%20subscription.gif" />
+1. Add User(delivery Personel) <img src="https://github.com/NightWing1998/CookieMan/blob/master/addUser(delivery).gif" />
+2. Add User(customer) <img src="https://github.com/NightWing1998/CookieMan/blob/master/addUser(customer).gif" />
+3. Login <img src="https://github.com/NightWing1998/CookieMan/blob/master/login.gif" />
+4. Place Order <img src="https://github.com/NightWing1998/CookieMan/blob/master/placingOrders.gif" />
+5. Delivery personels long polling for multiple orders <img src="https://github.com/NightWing1998/CookieMan/blob/master/multipleOrders.gif" />
+6. Customers receiving real time ETA(client side subscription) <img src="https://github.com/NightWing1998/CookieMan/blob/master/obtainingEta.gif" />
+7. Completing delivery <img src="https://github.com/NightWing1998/CookieMan/blob/master/orderDelivered.gif" />
+8. Dashboards:
+	a. Admin <img src="https://github.com/NightWing1998/CookieMan/blob/master/adminDashboard.gif" />
+	b. Personal Dashboard(Both customer and delivery personel) <img src="https://github.com/NightWing1998/CookieMan/blob/master/personalDashboard.gif" />
 
 ### Who do I talk to? ###
 
