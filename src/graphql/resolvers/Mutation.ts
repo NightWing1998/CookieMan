@@ -9,7 +9,7 @@ import { hashSync, compareSync, genSaltSync } from "bcrypt";
 import { sign } from "jsonwebtoken";
 
 import Users from "../../models/user";
-import order from "../../models/order";
+import OrderModel from "../../models/order";
 
 import config from "../../utils/config";
 import { MongooseDocument } from "mongoose";
@@ -21,7 +21,7 @@ import { resolve } from "path";
 
 import PriorityQueue from "ts-priority-queue";
 
-import { comparator } from "../../utils/helper";
+import { comparator, euclideanDistance, findAngle } from "../../utils/helper";
 
 export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub: PubSub, currLocation: number[], pricePerUnit: number) => ({
 	addUser: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<token> => {
@@ -37,9 +37,16 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 		} else if (category.toString().toLowerCase() === "customer" && address === undefined) {
 			throw new ApolloError(`Field address required for category ${category}`, "INVALID_ARGUMENTS");
 		}
+
 		const hashedPassword = hashSync(password, genSaltSync(config.SALT_ROUNDS));
-		const newPersonel = (await Users.create({ name, number, email, defaultAddress: address, category: category.toString().toLowerCase(), password: hashedPassword })).toJSON();
-		// console.log("#", newPersonel);
+
+		const newPersonel = (await Users.create({
+			name, number, email,
+			defaultAddress: address,
+			category: category.toString().toLowerCase(),
+			password: hashedPassword
+		})).toJSON();
+
 		const token = sign({
 			email: newPersonel.email,
 			id: newPersonel.id,
@@ -47,6 +54,7 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 		}, config.JWT_KEY, {
 			expiresIn: 24 * 60 * 60 * 1000,
 		});
+
 		return {
 			token
 		};
@@ -86,42 +94,51 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 		}
 
 		const { lat, long, customerAddress, quantity } = args;
-		const distance = Math.sqrt(Math.pow((currLocation[0] - parseFloat(lat.toString())), 2) + Math.pow(currLocation[1] - parseFloat(long.toString()), 2));
+
+		const distance = euclideanDistance(currLocation[0], currLocation[1], parseFloat(lat.toString()), parseFloat(long.toString()));
+
 		let orderAddress: string = customer.get("defaultAddress") || "";
 		if (customerAddress !== null && customerAddress !== undefined) {
 			orderAddress = customerAddress.toString();
 		}
+
 		const current = Date.now();
 		let filename = `${email}_${current}.png`;
 		const barcodePath = resolve(__dirname, "..", "..", "..", "barcodes", filename);
 		await qrcode.toFile(barcodePath, md5(`${customerAddress}_${distance}_${quantity}_${current}`));
-		const newO = (await order.create({
+		const newOrder = (await OrderModel.create({
 			customerAddress: orderAddress, distance, quantity,
 			price: pricePerUnit * parseInt(quantity.toString()),
 			barcodePath: `/barcodes/${filename}`,
 			arrivalTime: new Date(current),
 			user: id,
 			lat, long,
-			angle: (Math.floor(Math.atan2(parseFloat(lat.toString()) - currLocation[0], parseFloat(long.toString()) - currLocation[1]) * 180 / Math.PI) + 360) % 360
+			angle: findAngle(
+				parseFloat(long.toString()) - currLocation[1],
+				parseFloat(lat.toString()) - currLocation[0]
+			)
 		})).toJSON();
-		let o: Order = {
-			...newO,
+
+		let order: Order = {
+			...newOrder,
 			user: customer.toJSON(),
 			arrivalTime: current
 		}
-		// console.log(o);
+
 		const angleForEachSection = Math.floor(360 / config.SECTIONS);
-		let index = o.angle / angleForEachSection;
+
+		let index = order.angle / angleForEachSection;
+
 		if (multipleOrders[index]) {
-			multipleOrders[index].queue(o)
+			multipleOrders[index].queue(order)
 		} else {
 			multipleOrders[index] = new PriorityQueue<Order>({
 				comparator,
-				initialValues: [o]
+				initialValues: [order]
 			});
 		}
-		// console.log("@@", multipleOrders);
-		return o;
+
+		return order;
 	},
 	completeOrder: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<boolean> => {
 		const { isAuthenticated, id, category } = context;
@@ -137,7 +154,7 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 			throw new ApolloError("Invalid data in token. Please login again.", "INVALID_TOKEN");
 		}
 		const { orderId, text } = args;
-		const currOrder = await order.findOne({
+		const currOrder = await OrderModel.findOne({
 			_id: orderId.toString(),
 			status: "assigned",
 			deliveryPersonel: id
@@ -147,7 +164,7 @@ export const MutationResolver = (multipleOrders: PriorityQueue<Order>[], pubsub:
 		}
 		const { customerAddress, distance, quantity, arrivalTime } = currOrder.toJSON();
 		if (md5(`${customerAddress}_${distance}_${quantity}_${arrivalTime.getTime()}`) === text.toString()) {
-			const updatedOrder = (await order.findByIdAndUpdate(currOrder._id.toString(), {
+			const updatedOrder = (await OrderModel.findByIdAndUpdate(currOrder._id.toString(), {
 				...currOrder.toJSON(),
 				status: "delivered"
 			}, { new: true }).populate("user").populate("deliveryPersonel"))?.toJSON();

@@ -37,3 +37,24 @@ export const createAdmin = (): void => {
 			console.error(`Error on fetching admin user details: ${err}`);
 		});
 }
+
+export const extractDestinationLatLong = (orders: Order[]): string => {
+	let destLatLong = "";
+
+	for (let i = 0; i < orders.length - 1; i++) {
+		let tempOrder = orders[i];
+		destLatLong += `${tempOrder.lat},${tempOrder.long};`
+	};
+	let temp = orders[orders.length - 1];
+	destLatLong += `${temp.lat},${temp.long}`;
+
+	return destLatLong;
+}
+
+export const euclideanDistance = (x1: number, y1: number, x2: number, y2: number): number => {
+	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+export const findAngle = (x: number, y: number): number => {
+	return (Math.floor(Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}

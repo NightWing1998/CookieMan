@@ -14,47 +14,46 @@ import PriorityQueue from "ts-priority-queue";
 import axios from "axios";
 import config from "../../utils/config";
 
-// O(n) allowed as length of mo will be no. of sections which should be maximum of 360(worst case)
-const findMaxOrdersInACluster = (mo: PriorityQueue<Order>[]): number[] => {
-	let m = 0, loc = -1;
-	for (let i = 0; i < mo.length; i++) {
-		if (mo[i] && mo[i].length > m) {
-			loc = i; m = mo[i].length;
+import { extractDestinationLatLong } from "../../utils/helper";
+
+
+// O(n) allowed as length of multipleOrders will be no. of sections which should be maximum of 360(worst case)
+const findMaxOrdersInACluster = (multipleOrders: PriorityQueue<Order>[]): number[] => {
+	let maxOrdersLength = 0, location = -1;
+	for (let i = 0; i < multipleOrders.length; i++) {
+		if (multipleOrders[i] && multipleOrders[i].length > maxOrdersLength) {
+			location = i;
+			maxOrdersLength = multipleOrders[i].length;
 		}
 	}
-	return [m, loc];
+	return [maxOrdersLength, location];
 }
 
-export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: PubSub, currLocation: number[]) => ({
+export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: PubSub, currentLocation: number[]) => ({
 	// hello: (_: void, args: void, context: any): string => {
 	hello: (): string => {
 		// console.log("context: ", context);
 		return "world"
 	},
 	getUsers: async (_: void, args: any, context: any): Promise<User[] | []> => {
-		const { id, category, email, isAuthenticated } = context;
+		const { id, category, isAuthenticated } = context;
 		if (!isAuthenticated) {
 			throw new ApolloError("Login token required for fetching user data", "FORBIDDEN");
 		}
-		const u = (await Users.findById(id));
-		if (u === null || u === undefined) {
+		const user = (await Users.findById(id));
+		if (user === null || user === undefined) {
 			throw new ApolloError("Invalid data in token", "FORBIDDEN");
 		}
-		if (u.get("category") === category && u.get("email") === email) {
+		if (user.get("category") === category) {
 			// TOKEN data and db data match go ahead and complete requests
 			if (category === "admin") {
-				let { page } = args;
-				if (page === undefined) {
-					page = 0
-				} else if (typeof page !== "number") {
-					page = parseInt(page.toString() || '0');
-				}
-				if (args.category) {
-					return (await Users.find({ category }).skip(10 * page).limit(10)).map(doc => doc.toJSON());
-				} else
-					return (await Users.find({}).skip(10 * page).limit(10)).map(doc => doc.toJSON());
+				let page = parseInt(args.page?.toString()) || 0;
+				return (await Users.find({})
+					.skip(10 * page)
+					.limit(10)
+				).map(singleUser => singleUser.toJSON());
 			} else {
-				return [u.toJSON()];
+				return [user.toJSON()];
 			}
 		} else {
 			throw new ApolloError("Invalid data in token", "FORBIDDEN");
@@ -72,49 +71,48 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 			return null;
 		}
 
-		// SETTING A LIMIT ON MAX NO. OF ORDERS THAT A DELIVERY PERSON CAN TAKE AT A TIME, CAN HELP SCALE
-		let noOfOrders = Math.min(maxOrders, 9);
 		let deliverPersonelId = id;
 		if (category === "admin") {
-			deliverPersonelId = args.deliverPersonelId;
+			deliverPersonelId = args.deliverPersonelId?.toString();
 		}
-		const dP = (await Users.findById(deliverPersonelId));
-		if (dP === null || dP === undefined || dP.get("category") !== category) {
+		const deliveryPersonel = (await Users.findById(deliverPersonelId));
+
+		if (deliveryPersonel === null || deliveryPersonel === undefined || deliveryPersonel.get("category") !== category) {
 			throw new ApolloError(`Inavlid token. Please login again`, "FORBIDDEN");
 		}
 
 		const fetchcurrentOrders = await OrderModel.find({ deliveryPersonel: deliverPersonelId, status: "assigned" });
 
+		// IF DELIVERY PERSONEL HAS ORDERS ALREADY ASSIGNED THEN THROW ERROR AS NO NEW ORDERS CAN BE ACCEPTED WHILE DELIVERING ORDERS
 		if (fetchcurrentOrders.length !== 0) {
-			throw new ApolloError(`You already have pending orders. Please complete them first.`, "FORBIDDEN");
+			throw new ApolloError(`You already have pending orders. Please complete them first`, "FORBIDDEN");
 		}
+
+		// SETTING A LIMIT ON MAX NO. OF ORDERS THAT A DELIVERY PERSON CAN TAKE AT A TIME, CAN HELP SCALE
+		let noOfOrders = Math.min(maxOrders, 9);
+
 		const toBeDelivered: Order[] = [];
-		const updatedDP: User = { ...dP.toJSON() };
-		updatedDP.currentOrders = [];
 
-		let destLatLong = "";
+		for (let i = 0; i < noOfOrders; i++) {
+			toBeDelivered.push(MultipleOrders[index].dequeue());
+		}
 
-		for (let i = 0; i < noOfOrders - 1; i++) {
-			let tempOrder = MultipleOrders[index].dequeue()
-			toBeDelivered.push(tempOrder);
-			// destLatLong.push({
-			// 	"latitue": tempOrder.lat,
-			// 	"longitude": tempOrder.long
-			// });
-			destLatLong += `${tempOrder.lat},${tempOrder.long};`
-		};
-		let temp = MultipleOrders[index].dequeue();
-		toBeDelivered.push(temp);
-		destLatLong += `${temp.lat},${temp.long}`
-		// console.log(toBeDelivered);
+		let destLatLong = extractDestinationLatLong(toBeDelivered);
+
 		try {
-			const res = (await axios.get(`https://dev.virtualearth.net/REST/v1/Routes/DistanceMatrix?origins=${currLocation[0]},${currLocation[1]}&destinations=${destLatLong}&travelMode=driving&timeUnit=second&key=${config.BING_MAPS_KEY}`)).data;
-			// const res = (await axios.get(`https://dev.virtualearth.net/REST/v1/Routes/DistanceMatrix?origins=47.6044,-122.3345;47.6731,-122.1185;47.6149,-122.1936&destinations=45.5347,-122.6231;47.4747,-122.2057&travelMode=driving&timeUnit=second&key=${config.BING_MAPS_KEY}`)).data;
+			const res = (await axios.get(`https://dev.virtualearth.net/REST/v1/Routes/DistanceMatrix?origins=${currentLocation[0]},${currentLocation[1]}&destinations=${destLatLong}&travelMode=driving&timeUnit=second&key=${config.BING_MAPS_KEY}`)).data;
 
-			// console.log(res.resourceSets[0].resources[0].results);
-			const sumOfAllEta = res.resourceSets[0].resources[0].results.reduce((p: number, c: any): number => p + c.travelDuration, 0)
-			res.resourceSets[0].resources[0].results.forEach((r: any) => {
-				toBeDelivered[r.destinationIndex].eta = new Date(Date.now() + 1000 + sumOfAllEta * 1000 + 360000)
+			const distanceAndTimeMatrix = res.resourceSets[0].resources[0].results; // travelDuration --> seconds not ms.
+
+			// sumOfAllEta - MAXIMUM TIME TO SERVE ALL THE ORDERS FROM COOKIE SHOP CONSIDERING THEY ARE SERVED ALONE
+			const sumOfAllEta = distanceAndTimeMatrix.reduce((sum: number, currentCell: any): number => sum + currentCell.travelDuration, 0)
+
+			// ADDING BUFFER TIME AN HOUR TO COMPENSATE FOR ANY DELAY
+			const etaForAll = new Date(Date.now() + 1000 + sumOfAllEta * 1000 + 360000);
+			distanceAndTimeMatrix.forEach((cell: any) => {
+
+				toBeDelivered[cell.destinationIndex].eta = etaForAll;
+
 			});
 		} catch (e) {
 			console.error(e);
@@ -123,26 +121,21 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 
 		for (let i = 0; i < noOfOrders; i++) {
 			let tempOrder = toBeDelivered[i];
-			updatedDP.currentOrders.push(tempOrder.id);
-			updatedDP.history?.push(tempOrder.id);
 
-			tempOrder.deliveryPersonel = updatedDP;
+			tempOrder.deliveryPersonel = { ...deliveryPersonel.toJSON() };
 			tempOrder.status = "assigned"
 			await OrderModel.findByIdAndUpdate(tempOrder.id, {
 				...tempOrder,
 				user: tempOrder.user.id,
-				deliveryPersonel: tempOrder.deliveryPersonel.id
+				deliveryPersonel: tempOrder.deliveryPersonel?.id
 			});
 
 			pubsub.publish("ORDER_UPDATE", {
 				orderTracking: tempOrder
 			});
 
-			// toBeDelivered.push(tempOrder);
 		}
 
-		await Users.findByIdAndUpdate(updatedDP.id, updatedDP);
-		// console.log(toBeDelivered);
 		return toBeDelivered;
 	},
 	getOrders: async (_: void, args: GraphQLFieldConfigArgumentMap, context: any): Promise<any> => {
@@ -150,8 +143,8 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 		if (!isAuthenticated) {
 			throw new ApolloError("Login Required", "FORBIDDEN");
 		}
-		const u = await Users.findById(id);
-		if (u === null || u === undefined || u.get("category") !== category) {
+		const user = await Users.findById(id);
+		if (user === null || user === undefined || user.get("category") !== category) {
 			throw new ApolloError(`Inavlid token. Please login again`, "FORBIDDEN");
 		}
 
@@ -172,11 +165,16 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 
 		let page = parseInt(args.page?.toString()) || 0;
 
-		const o = await Promise.all((await OrderModel.find(options).skip(10 * page).limit(10)).map(async (or: MongooseDocument) => {
-			return await (await or.populate("user").populate("deliveryPersonel").execPopulate()).toJSON()
-		}));
+		const orders = await Promise.all(
+			(await OrderModel.find(options)
+				.skip(10 * page)
+				.limit(10)
+			).map(async (order: MongooseDocument) => {
+				return await (await order.populate("user").populate("deliveryPersonel").execPopulate()).toJSON()
+			})
+		);
 		// console.log(o);
-		return o;
+		return orders;
 	}
 
 });

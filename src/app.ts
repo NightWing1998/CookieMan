@@ -38,7 +38,7 @@ app.use(tokenExtractor);
 // app.use(requestLogger);
 
 server.applyMiddleware({
-	app, path: `/api/v2${config.GRAPHQL_ROUTE}`, cors: true, bodyParserConfig: {
+	app, path: `/api${config.GRAPHQL_ROUTE}`, cors: true, bodyParserConfig: {
 		inflate: true,
 		strict: true,
 
