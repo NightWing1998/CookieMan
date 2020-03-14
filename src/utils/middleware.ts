@@ -44,14 +44,14 @@ export const tokenExtractor = (req: Request, res: Response, next: NextFunction):
 	const authorization: string | undefined = req.get("authorization");
 	try {
 		if (authorization && authorization.toLowerCase().startsWith("bearer ")) {
-			let obj = verify(authorization.substring(7), config.JWT_KEY);
-			if (typeof obj !== "object") {
-				obj = {}
+			let userFromToken = verify(authorization.substring(7), config.JWT_KEY);
+			if (typeof userFromToken !== "object") {
+				throw Error("Invalid token received");
 			}
 			req.signedCookies = {
 				token: authorization.substring(7),
 				isAuthenticated: true,
-				...obj
+				...userFromToken
 			}
 		} else {
 			req.signedCookies = {

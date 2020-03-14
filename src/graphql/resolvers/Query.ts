@@ -7,7 +7,7 @@ import { ApolloError, PubSub } from "apollo-server-express";
 import { MongooseDocument } from "mongoose";
 
 import Users from "../../models/user";
-import order from "../../models/order";
+import OrderModel from "../../models/order";
 
 import PriorityQueue from "ts-priority-queue";
 
@@ -83,7 +83,7 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 			throw new ApolloError(`Inavlid token. Please login again`, "FORBIDDEN");
 		}
 
-		const fetchcurrentOrders = await order.find({ deliveryPersonel: deliverPersonelId, status: "assigned" });
+		const fetchcurrentOrders = await OrderModel.find({ deliveryPersonel: deliverPersonelId, status: "assigned" });
 
 		if (fetchcurrentOrders.length !== 0) {
 			throw new ApolloError(`You already have pending orders. Please complete them first.`, "FORBIDDEN");
@@ -128,7 +128,7 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 
 			tempOrder.deliveryPersonel = updatedDP;
 			tempOrder.status = "assigned"
-			await order.findByIdAndUpdate(tempOrder.id, {
+			await OrderModel.findByIdAndUpdate(tempOrder.id, {
 				...tempOrder,
 				user: tempOrder.user.id,
 				deliveryPersonel: tempOrder.deliveryPersonel.id
@@ -170,14 +170,9 @@ export const QueryResolver = (MultipleOrders: PriorityQueue<Order>[], pubsub: Pu
 			options["user"] = id;
 		}
 
-		let page: number;
-		if (args.page === undefined) {
-			page = 0
-		} else {
-			page = parseInt(args.page.toString() || '0');
-		}
+		let page = parseInt(args.page?.toString()) || 0;
 
-		const o = await Promise.all((await order.find(options).skip(10 * page).limit(10)).map(async (or: MongooseDocument) => {
+		const o = await Promise.all((await OrderModel.find(options).skip(10 * page).limit(10)).map(async (or: MongooseDocument) => {
 			return await (await or.populate("user").populate("deliveryPersonel").execPopulate()).toJSON()
 		}));
 		// console.log(o);

@@ -1,7 +1,7 @@
 import { GraphQLFieldConfigArgumentMap } from "graphql";
 
 // import deliveryPersonel from "../models/deliveryPersonel";
-import order from "../models/order";
+import OrderModel from "../models/order";
 import { MongooseDocument } from "mongoose";
 
 import PriorityQueue from "ts-priority-queue";
@@ -22,24 +22,28 @@ import config from "../utils/config";
 
 const pubsub = new PubSub();
 
-const currLocation = [19, 19];
+const currentLocation = [19, 19];
 const pricePerUnit = 20;
 
 const multipleOrders: PriorityQueue<Order>[] = [];
 
-// initialise OrderQueue
+// initialise multipleOrders
 (async () => {
 	const angleForEachSection = Math.floor(360 / config.SECTIONS);
-	const orders: Order[] = (await order.find({ status: "ordered" })).map((o: MongooseDocument): any => ({ ...o.toJSON(), arrivalTime: o.get("arrivalTime")?.getTime() }));
+	const orders: Order[] = (await OrderModel.find({ status: "OrderModeled" }))
+		.map((order: MongooseDocument): any => ({
+			...order.toJSON(),
+			arrivalTime: order.get("arrivalTime")?.getTime()
+		}));
 	orders
-		.forEach(o => {
-			let index = o.angle / angleForEachSection;
+		.forEach(order => {
+			let index = order.angle / angleForEachSection;
 			if (multipleOrders[index]) {
-				multipleOrders[index].queue(o)
+				multipleOrders[index].queue(order)
 			} else {
 				multipleOrders[index] = new PriorityQueue<Order>({
 					comparator,
-					initialValues: [o]
+					initialValues: [order]
 				});
 			}
 		});
@@ -48,10 +52,10 @@ const multipleOrders: PriorityQueue<Order>[] = [];
 
 export default {
 	Query: {
-		...QueryResolver(multipleOrders, pubsub, currLocation)
+		...QueryResolver(multipleOrders, pubsub, currentLocation)
 	},
 	Mutation: {
-		...MutationResolver(multipleOrders, pubsub, currLocation, pricePerUnit)
+		...MutationResolver(multipleOrders, pubsub, currentLocation, pricePerUnit)
 	},
 	Subscription: {
 		orderTracking: {

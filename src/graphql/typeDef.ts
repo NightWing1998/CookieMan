@@ -26,7 +26,6 @@ export default gql`
 	type Query {
 		hello : String!,
 		getUsers(
-			category: String, 
 			page: Int
 		): [User!]!,
 		getOrders(id: ID, status: String, page: Int): [Order!]!,
